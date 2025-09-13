@@ -1,0 +1,47 @@
+# Red virtual principal
+resource "azurerm_virtual_network" "main" {
+  name                = "microservice-vnet"
+  address_space       = var.vnet_address_space
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+# Subnet para Auth Service
+resource "azurerm_subnet" "auth" {
+  name                 = "auth-db-subnet"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [var.auth_subnet_prefix]
+}
+
+# Subnet para Users Service
+resource "azurerm_subnet" "users" {
+  name                 = "users-db-subnet"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [var.users_subnet_prefix]
+}
+
+# Subnet para Todos Service
+resource "azurerm_subnet" "todos" {
+  name                 = "todos-db-subnet"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [var.todos_subnet_prefix]
+}
+
+# Subnet para Application Gateway
+resource "azurerm_subnet" "gateway" {
+  name                 = "gateway-subnet"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [var.gateway_subnet_prefix]
+}
+
+# Subnet para Azure Cache for Redis
+resource "azurerm_subnet" "cache" {
+  name                 = "cache-subnet"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [var.cache_subnet_prefix]
+}
