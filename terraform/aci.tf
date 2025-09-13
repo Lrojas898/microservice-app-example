@@ -12,7 +12,12 @@ resource "azurerm_container_group" "auth" {
     image  = "your-dockerhub-repo/auth-service:latest"
     cpu    = "1"
     memory = "1.5"
-    port   = 8000
+
+    # ¡CORRECCIÓN IMPORTANTE! Usa el bloque "ports" en lugar de "port"
+    ports {
+      port     = 8000
+      protocol = "TCP"
+    }
 
     environment_variables = {
       PORT                  = "8000"
@@ -41,7 +46,12 @@ resource "azurerm_container_group" "users" {
     image  = "your-dockerhub-repo/users-service:latest"
     cpu    = "1"
     memory = "1.5"
-    port   = 8083
+
+    # ¡CORRECCIÓN IMPORTANTE! Usa el bloque "ports" en lugar de "port"
+    ports {
+      port     = 8083
+      protocol = "TCP"
+    }
 
     environment_variables = {
       SERVER_PORT           = "8083"
@@ -69,7 +79,12 @@ resource "azurerm_container_group" "todos" {
     image  = "your-dockerhub-repo/todos-service:latest"
     cpu    = "1"
     memory = "1.5"
-    port   = 8082
+
+    # ¡CORRECCIÓN IMPORTANTE! Usa el bloque "ports" en lugar de "port"
+    ports {
+      port     = 8082
+      protocol = "TCP"
+    }
 
     environment_variables = {
       PORT                  = "8082"
