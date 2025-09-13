@@ -16,41 +16,52 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [auth-service, users-service, todos-service]
+        service: [auth, users, todos]
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Node.js (for Node services)
-        if: matrix.service == 'auth-service' || matrix.service == 'todos-service'
-        uses: actions/setup-node@v3
+      - name: Set up Go (for Auth API)
+        if: matrix.service == 'auth'
+        uses: actions/setup-go@v3
         with:
-          node-version: '18'
+          go-version: '1.18'
 
-      - name: Set up Java (for Spring Boot)
-        if: matrix.service == 'users-service'
+      - name: Set up Java (for Users API)
+        if: matrix.service == 'users'
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
+          java-version: '8'
           distribution: 'temurin'
+
+      - name: Set up Node.js (for Todos API)
+        if: matrix.service == 'todos'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '8.17.0'
 
       - name: Build ${{ matrix.service }}
         run: |
-          cd microservices/${{ matrix.service }}
-          if [ "${{ matrix.service }}" = "users-service" ]; then
+          cd ${{ matrix.service }}-api
+          if [ "${{ matrix.service }}" = "users" ]; then
             ./mvnw clean package -DskipTests
-          else
+          elif [ "${{ matrix.service }}" = "auth" ]; then
+            go mod init github.com/bortizf/microservice-app-example/auth-api
+            go mod tidy
+            go build -o auth-service .
+          elif [ "${{ matrix.service }}" = "todos" ]; then
             npm install
-            npm run build
           fi
 
       - name: Test ${{ matrix.service }}
         run: |
-          cd microservices/${{ matrix.service }}
-          if [ "${{ matrix.service }}" = "users-service" ]; then
+          cd ${{ matrix.service }}-api
+          if [ "${{ matrix.service }}" = "users" ]; then
             ./mvnw test
-          else
+          elif [ "${{ matrix.service }}" = "auth" ]; then
+            go test ./...
+          elif [ "${{ matrix.service }}" = "todos" ]; then
             npm test
           fi
 
