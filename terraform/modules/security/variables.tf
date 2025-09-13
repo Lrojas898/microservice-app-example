@@ -8,7 +8,12 @@ variable "location" {
   type        = string
 }
 
-variable "vnet_id" {
-  description = "ID de la red virtual"
+variable "cache_subnet_id" {
+  description = "ID de la subnet para Azure Cache for Redis"
+  type        = string
+}
+
+variable "gateway_subnet_id" {
+  description = "ID de la subnet para Application Gateway"
   type        = string
 }

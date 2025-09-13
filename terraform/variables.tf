@@ -1,3 +1,4 @@
+# Variables globales
 variable "resource_group_name" {
   description = "Nombre del grupo de recursos en Azure"
   type        = string
@@ -46,4 +47,23 @@ variable "cache_subnet_prefix" {
   description = "Prefijo de dirección para la subnet de Cache"
   type        = string
   default     = "10.0.5.0/24"
+}
+
+# Variables para contraseñas de bases de datos
+variable "postgres_auth_password" {
+  description = "Contraseña para el servidor PostgreSQL de Auth"
+  type        = string
+  sensitive   = true
+}
+
+variable "postgres_users_password" {
+  description = "Contraseña para el servidor PostgreSQL de Users"
+  type        = string
+  sensitive   = true
+}
+
+variable "postgres_todos_password" {
+  description = "Contraseña para el servidor PostgreSQL de Todos"
+  type        = string
+  sensitive   = true
 }
