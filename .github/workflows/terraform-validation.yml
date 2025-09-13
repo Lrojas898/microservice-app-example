@@ -38,7 +38,9 @@ jobs:
 
       - name: Upload Terraform Plan
         if: steps.plan.outcome == 'failure'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: terraform-plan-fail
-          path: terraform/plan.out
+          path: |
+            terraform/plan.out
+            terraform/*.tfplan
