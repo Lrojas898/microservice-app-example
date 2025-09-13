@@ -27,9 +27,14 @@ output "cache_subnet_id" {
 }
 
 output "application_gateway_name" {
-  value = azurerm_application_gateway.main.name
+  value = module.security.application_gateway_name
 }
 
 output "redis_cache_hostname" {
-  value = azurerm_redis_cache.main.hostname
+  value = module.security.redis_cache_hostname
+}
+
+output "redis_cache_primary_key" {
+  value = module.security.redis_cache_primary_key
+  sensitive = true
 }

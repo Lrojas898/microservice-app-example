@@ -1,1 +1,13 @@
-/microservice-app-example/.gitignore
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+terraform.tfvars
+*.auto.tfvars
+.terraform.lock.hcl
+
+# Archivos temporales
+*.log
+*.tmp
+.DS_Store

@@ -1,18 +1,4 @@
-# Configuración del proveedor Azure
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 3.0"
-    }
-  }
-}
-
-provider "azurerm" {
-  features {}
-}
-
-# Azure Cache for Redis (para Cache-Aside y cola de mensajes)
+# Azure Cache for Redis
 resource "azurerm_redis_cache" "main" {
   name                = "microservice-redis"
   location            = var.location
@@ -20,12 +6,21 @@ resource "azurerm_redis_cache" "main" {
   capacity            = 2
   family              = "C"
   sku_name            = "Standard"
-  enable_non_ssl_port = false
+  non_ssl_port_enabled = false  # Corregido: enable_non_ssl_port → non_ssl_port_enabled
   minimum_tls_version = "1.2"
   subnet_id           = var.cache_subnet_id
 }
 
-# Application Gateway (punto de entrada unificado)
+# Public IP para el Application Gateway
+resource "azurerm_public_ip" "appgw" {
+  name                = "appgw-public-ip"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+# Application Gateway
 resource "azurerm_application_gateway" "main" {
   name                = "microservice-appgw"
   resource_group_name = var.resource_group_name
@@ -64,51 +59,12 @@ resource "azurerm_application_gateway" "main" {
     name = "todos-pool"
   }
 
-  # Health Probes para cada servicio
-  resource "azurerm_application_gateway_probe" "auth" {
-    name                = "auth-probe"
-    application_gateway_name = azurerm_application_gateway.main.name
-    resource_group_name = var.resource_group_name
-    protocol            = "Http"
-    host                = "auth.example.com"
-    path                = "/health"
-    interval            = 30
-    timeout             = 10
-    unhealthy_threshold = 3
-  }
-
-  resource "azurerm_application_gateway_probe" "users" {
-    name                = "users-probe"
-    application_gateway_name = azurerm_application_gateway.main.name
-    resource_group_name = var.resource_group_name
-    protocol            = "Http"
-    host                = "users.example.com"
-    path                = "/health"
-    interval            = 30
-    timeout             = 10
-    unhealthy_threshold = 3
-  }
-
-  resource "azurerm_application_gateway_probe" "todos" {
-    name                = "todos-probe"
-    application_gateway_name = azurerm_application_gateway.main.name
-    resource_group_name = var.resource_group_name
-    protocol            = "Http"
-    host                = "todos.example.com"
-    path                = "/health"
-    interval            = 30
-    timeout             = 10
-    unhealthy_threshold = 3
-  }
-
-  # Backend HTTP Settings con timeouts ajustados
   backend_http_settings {
     name                  = "auth-settings"
     cookie_based_affinity = "Disabled"
     port                  = 8000
     protocol              = "Http"
     request_timeout       = 30
-    probe_name            = "auth-probe"
   }
 
   backend_http_settings {
@@ -116,8 +72,7 @@ resource "azurerm_application_gateway" "main" {
     cookie_based_affinity = "Disabled"
     port                  = 8083
     protocol              = "Http"
-    request_timeout       = 45  # ¡CAMBIO IMPORTANTE! Aumentado de 30 a 45 segundos para manejar heterogeneidad de respuesta
-    probe_name            = "users-probe"
+    request_timeout       = 45  # Aumentado para manejar heterogeneidad de respuesta
   }
 
   backend_http_settings {
@@ -126,7 +81,6 @@ resource "azurerm_application_gateway" "main" {
     port                  = 8082
     protocol              = "Http"
     request_timeout       = 30
-    probe_name            = "todos-probe"
   }
 
   http_listener {
@@ -178,16 +132,7 @@ resource "azurerm_application_gateway" "main" {
   }
 }
 
-# Public IP para el Application Gateway
-resource "azurerm_public_ip" "appgw" {
-  name                = "appgw-public-ip"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  allocation_method   = "Static"
-  sku                 = "Standard"
-}
-
-# Application Insights para monitoreo
+# Application Insights
 resource "azurerm_application_insights" "main" {
   name                = "microservice-appinsights"
   location            = var.location
@@ -195,38 +140,11 @@ resource "azurerm_application_insights" "main" {
   application_type    = "web"
 }
 
-# Log Processor (Logic App)
+# Log Processor (Logic App) - CORREGIDO
 resource "azurerm_logic_app_workflow" "log_processor" {
   name                = "log-message-processor"
   location            = var.location
   resource_group_name = var.resource_group_name
-
-  definition = <<DEFINITION
-{
-  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
-  "actions": {
-    "HTTP": {
-      "inputs": {
-        "body": "@triggerBody()",
-        "method": "POST",
-        "uri": "${azurerm_application_insights.main.instrumentation_key}"
-      },
-      "runAfter": {},
-      "type": "Http"
-    }
-  },
-  "contentVersion": "1.0.0.0",
-  "outputs": {},
-  "parameters": {},
-  "triggers": {
-    "manual": {
-      "inputs": {
-        "schema": {}
-      },
-      "kind": "Http",
-      "type": "Request"
-    }
-  }
-}
-DEFINITION
+  workflow_schema     = "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#"
+  workflow_version    = "1.0.0.0"
 }

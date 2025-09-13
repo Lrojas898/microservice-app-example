@@ -1,10 +1,15 @@
+# Configuración del proveedor Azure
+provider "azurerm" {
+  features {}
+}
+
 # Grupo de recursos principal
 resource "azurerm_resource_group" "main" {
   name     = var.resource_group_name
   location = var.location
 }
 
-# Incluye los módulos de red
+# Módulo de red
 module "network" {
   source = "./modules/network"
   
@@ -18,11 +23,12 @@ module "network" {
   cache_subnet_prefix = var.cache_subnet_prefix
 }
 
-# Incluye los recursos de seguridad
+# Módulo de seguridad
 module "security" {
   source = "./modules/security"
   
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
-  vnet_id             = module.network.vnet_id
+  cache_subnet_id     = module.network.cache_subnet_id
+  gateway_subnet_id   = module.network.gateway_subnet_id
 }
