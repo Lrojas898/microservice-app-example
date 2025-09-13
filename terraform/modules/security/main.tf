@@ -1,4 +1,4 @@
-# Azure Cache for Redis (para Cache-Aside y cola de mensajes)
+# Azure Cache for Redis
 resource "azurerm_redis_cache" "main" {
   name                = "microservice-redis"
   location            = var.location
@@ -6,12 +6,21 @@ resource "azurerm_redis_cache" "main" {
   capacity            = 2
   family              = "C"
   sku_name            = "Standard"
-  enable_non_ssl_port = false
+  non_ssl_port_enabled = false  # Corregido: enable_non_ssl_port → non_ssl_port_enabled
   minimum_tls_version = "1.2"
-  subnet_id           = module.network.cache_subnet_id
+  subnet_id           = var.cache_subnet_id
 }
 
-# Application Gateway (punto de entrada unificado)
+# Public IP para el Application Gateway
+resource "azurerm_public_ip" "appgw" {
+  name                = "appgw-public-ip"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+# Application Gateway
 resource "azurerm_application_gateway" "main" {
   name                = "microservice-appgw"
   resource_group_name = var.resource_group_name
@@ -25,7 +34,7 @@ resource "azurerm_application_gateway" "main" {
 
   gateway_ip_configuration {
     name      = "appGatewayIpConfig"
-    subnet_id = module.network.gateway_subnet_id
+    subnet_id = var.gateway_subnet_id
   }
 
   frontend_port {
@@ -53,7 +62,7 @@ resource "azurerm_application_gateway" "main" {
   backend_http_settings {
     name                  = "auth-settings"
     cookie_based_affinity = "Disabled"
-    port                  = 3000
+    port                  = 8000
     protocol              = "Http"
     request_timeout       = 30
   }
@@ -61,15 +70,15 @@ resource "azurerm_application_gateway" "main" {
   backend_http_settings {
     name                  = "users-settings"
     cookie_based_affinity = "Disabled"
-    port                  = 8080
+    port                  = 8083
     protocol              = "Http"
-    request_timeout       = 30
+    request_timeout       = 45  # Aumentado para manejar heterogeneidad de respuesta
   }
 
   backend_http_settings {
     name                  = "todos-settings"
     cookie_based_affinity = "Disabled"
-    port                  = 4000
+    port                  = 8082
     protocol              = "Http"
     request_timeout       = 30
   }
@@ -121,13 +130,21 @@ resource "azurerm_application_gateway" "main" {
     backend_address_pool_name  = "todos-pool"
     backend_http_settings_name = "todos-settings"
   }
+}
 
-  # Public IP para el Application Gateway
-  resource "azurerm_public_ip" "appgw" {
-    name                = "appgw-public-ip"
-    resource_group_name = var.resource_group_name
-    location            = var.location
-    allocation_method   = "Static"
-    sku                 = "Standard"
-  }
+# Application Insights
+resource "azurerm_application_insights" "main" {
+  name                = "microservice-appinsights"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  application_type    = "web"
+}
+
+# Log Processor (Logic App) - CORREGIDO
+resource "azurerm_logic_app_workflow" "log_processor" {
+  name                = "log-message-processor"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  workflow_schema     = "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#"
+  workflow_version    = "1.0.0.0"
 }
