@@ -19,6 +19,11 @@ jobs:
         with:
           terraform_version: 1.5.7
 
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: terraform
+
       - name: Terraform Format
         id: fmt
         run: terraform fmt -check
@@ -38,7 +43,7 @@ jobs:
 
       - name: Upload Terraform Plan
         if: steps.plan.outcome == 'failure'
-        uses: actions/upload-artifact@v4  # v3 a v4
+        uses: actions/upload-artifact@v4
         with:
           name: terraform-plan-fail
           path: |
