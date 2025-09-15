@@ -1,0 +1,70 @@
+# .github/workflows/disaster-recovery-testing.yml
+name: Disaster Recovery Testing Pipeline
+
+on:
+  workflow_dispatch: # Ejecución manual
+  schedule:
+    - cron: '0 3 * * 0' # Ejecuta cada domingo a las 3 AM
+
+jobs:
+  disaster-recovery-test:
+    name: Disaster Recovery Test
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Azure CLI
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create Backup Snapshot
+        run: |
+          echo "Creating backup snapshot of critical resources..."
+          # Crear snapshots de bases de datos
+          az postgres server replica create --name auth-db-backup --source-server auth-db-server --resource-group microservice-app-rg
+          az postgres server replica create --name users-db-backup --source-server users-db-server --resource-group microservice-app-rg
+          az postgres server replica create --name todos-db-backup --source-server todos-db-server --resource-group microservice-app-rg
+          
+          # Crear snapshot de Redis
+          az redis export --name microservice-redis --resource-group microservice-app-rg --prefix backup-$(date +%Y%m%d)
+
+      - name: Simulate Disaster
+        run: |
+          echo "Simulating disaster scenario..."
+          # Simular fallo de un servicio
+          az container stop --name auth-service --resource-group microservice-app-rg
+          sleep 30
+
+      - name: Execute Recovery Plan
+        run: |
+          echo "Executing recovery plan..."
+          # Restaurar desde backup
+          az container start --name auth-service --resource-group microservice-app-rg
+          sleep 30
+          
+          # Verificar que el servicio está funcionando
+          curl -f http://auth-service:8000/health
+
+      - name: Validate Recovery
+        run: |
+          echo "Validating recovery..."
+          # Verificar que todos los servicios están funcionando
+          SERVICES=("auth-service" "users-service" "todos-service")
+          for service in "${SERVICES[@]}"; do
+            if ! curl -f http://$service:8000/health; then
+              echo " Recovery failed for $service"
+              exit 1
+            fi
+          done
+          echo " All services recovered successfully"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "Cleaning up backup resources..."
+          az postgres server delete --name auth-db-backup --resource-group microservice-app-rg --yes
+          az postgres server delete --name users-db-backup --resource-group microservice-app-rg --yes
+          az postgres server delete --name todos-db-backup --resource-group microservice-app-rg --yes

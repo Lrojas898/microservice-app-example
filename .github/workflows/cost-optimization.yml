@@ -1,0 +1,77 @@
+# .github/workflows/cost-optimization.yml
+name: Cost Optimization Pipeline
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'terraform/**'
+    types: [opened, synchronize]
+  schedule:
+    - cron: '0 4 * * *' # Ejecuta diariamente a las 4 AM
+
+jobs:
+  cost-optimization:
+    name: Cost Optimization Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+
+      - name: Terraform Init
+        run: terraform init -input=false
+        working-directory: terraform
+
+      - name: Terraform Plan
+        run: |
+          terraform plan -input=false -no-color -out=tfplan
+          terraform show -json tfplan > tfplan.json
+        working-directory: terraform
+
+      - name: Install Cost Tools
+        run: |
+          pip3 install infracost
+
+      - name: Run Cost Analysis
+        run: |
+          cd terraform
+          # Configurar Infracost
+          infracost configure set api_key ${{ secrets.INFRACOST_API_KEY }}
+          
+          # Analizar costos
+          infracost breakdown --path . --show-skipped --format json > cost-analysis.json
+          
+          # Comparar con estado actual
+          infracost diff --path . --show-skipped --format json > cost-diff.json
+
+      - name: Validate Cost Thresholds
+        run: |
+          cd terraform
+          # Leer costos estimados
+          TOTAL_COST=$(jq '.totalMonthlyCost' cost-analysis.json)
+          echo "Estimated monthly cost: $$TOTAL_COST"
+          
+          # Validar contra umbral
+          if (( $(echo "$TOTAL_COST > 1000" | bc -l) )); then
+            echo " WARNING: Estimated monthly cost ($$TOTAL_COST) exceeds threshold ($1000)"
+            echo "Please review resource sizing and consider cost optimization strategies:"
+            echo "- Use smaller instance sizes for non-production environments"
+            echo "- Implement auto-scaling policies"
+            echo "- Use reserved instances for production workloads"
+            echo "- Implement resource tagging for cost allocation"
+          else
+            echo " Cost optimization: Estimated monthly cost ($$TOTAL_COST) is within acceptable range"
+          fi
+
+      - name: Upload Cost Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: cost-report-${{ github.run_id }}
+          path: |
+            terraform/cost-analysis.json
+            terraform/cost-diff.json

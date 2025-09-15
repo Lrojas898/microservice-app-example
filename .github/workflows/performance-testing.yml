@@ -1,0 +1,83 @@
+# .github/workflows/performance-testing.yml
+name: Performance Testing Pipeline
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'auth-api/**'
+      - 'users-api/**'
+      - 'todos-api/**'
+    types: [opened, synchronize]
+
+jobs:
+  performance-test:
+    name: Performance Test ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth-api, users-api, todos-api]
+        include:
+          - service: auth-api
+            port: 8000
+          - service: users-api
+            port: 8083
+          - service: todos-api
+            port: 8082
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Environment
+        uses: ${{ matrix.service == 'auth-api' && 'actions/setup-go@v3' || matrix.service == 'users-api' && 'actions/setup-java@v3' || matrix.service == 'todos-api' && 'actions/setup-node@v3' }}
+        with:
+          ${{ matrix.service == 'auth-api' && 'go-version' || matrix.service == 'users-api' && 'java-version' || matrix.service == 'todos-api' && 'node-version' }}: ${{ matrix.service == 'auth-api' && '1.21' || matrix.service == 'users-api' && '17' || matrix.service == 'todos-api' && '18' }}
+
+      - name: Build Service
+        run: |
+          cd ${{ matrix.service }}
+          case "${{ matrix.service }}" in
+            auth-api)
+              go build -o auth-service .
+              ;;
+            users-api)
+              ./mvnw clean package -DskipTests
+              ;;
+            todos-api)
+              npm ci
+              ;;
+          esac
+
+      - name: Start Service
+        run: |
+          cd ${{ matrix.service }}
+          case "${{ matrix.service }}" in
+            auth-api)
+              nohup ./auth-service &
+              ;;
+            users-api)
+              nohup java -jar target/*.jar &
+              ;;
+            todos-api)
+              nohup npm start &
+              ;;
+          esac
+        continue-on-error: true
+
+      - name: Run Performance Tests
+        run: |
+          # Instalar herramientas de performance testing
+          sudo apt-get update && sudo apt-get install -y apache2-utils
+          
+          # Ejecutar pruebas de carga
+          echo "Running performance tests on ${{ matrix.service }} at port ${{ matrix.port }}"
+          ab -n 1000 -c 100 http://localhost:${{ matrix.port }}/health
+          
+          # Validar resultados
+          if [ $? -ne 0 ]; then
+            echo " Performance test failed for ${{ matrix.service }}"
+            exit 1
+          else
+            echo " Performance test passed for ${{ matrix.service }}"
+          fi
