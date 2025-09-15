@@ -85,3 +85,4 @@ Crear `terraform.tfvars` con las contraseñas (no recomendado para producción).
 2. Ejecuta el pipeline - las contraseñas se generarán automáticamente
 3. Recupera las contraseñas desde Key Vault o outputs de Terraform
 4. Configura tus aplicaciones con las contraseñas obtenidas
+\n# Trigger infra pipelines
