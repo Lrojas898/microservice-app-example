@@ -54,16 +54,26 @@ variable "postgres_auth_password" {
   description = "Contraseña para el servidor PostgreSQL de Auth"
   type        = string
   sensitive   = true
+  default     = null
 }
 
 variable "postgres_users_password" {
   description = "Contraseña para el servidor PostgreSQL de Users"
   type        = string
   sensitive   = true
+  default     = null
 }
 
 variable "postgres_todos_password" {
   description = "Contraseña para el servidor PostgreSQL de Todos"
   type        = string
   sensitive   = true
+  default     = null
+}
+
+# Variable para Key Vault
+variable "key_vault_name" {
+  description = "Nombre del Key Vault para almacenar secretos"
+  type        = string
+  default     = "microservice-kv"
 }

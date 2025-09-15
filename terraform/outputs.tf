@@ -38,3 +38,27 @@ output "redis_cache_primary_key" {
   value = module.security.redis_cache_primary_key
   sensitive = true
 }
+
+# Outputs para Key Vault y contraseñas
+output "key_vault_name" {
+  value = azurerm_key_vault.main.name
+}
+
+output "key_vault_uri" {
+  value = azurerm_key_vault.main.vault_uri
+}
+
+output "postgres_auth_password" {
+  value = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
+  sensitive = true
+}
+
+output "postgres_users_password" {
+  value = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
+  sensitive = true
+}
+
+output "postgres_todos_password" {
+  value = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
+  sensitive = true
+}

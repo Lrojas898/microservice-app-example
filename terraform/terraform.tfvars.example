@@ -1,0 +1,22 @@
+# Ejemplo de archivo terraform.tfvars
+# Copia este archivo a terraform.tfvars y ajusta los valores según tu entorno
+
+# Variables globales
+resource_group_name = "microservice-app-rg"
+location = "eastus"
+
+# Variables de red
+vnet_address_space = ["10.0.0.0/16"]
+auth_subnet_prefix = "10.0.1.0/24"
+users_subnet_prefix = "10.0.2.0/24"
+todos_subnet_prefix = "10.0.3.0/24"
+gateway_subnet_prefix = "10.0.4.0/24"
+cache_subnet_prefix = "10.0.5.0/24"
+
+# Variables para Key Vault
+key_vault_name = "microservice-kv"
+
+# Contraseñas de PostgreSQL (opcional - si no se proporcionan, se generan automáticamente)
+# postgres_auth_password = "tu_contraseña_auth"
+# postgres_users_password = "tu_contraseña_users"
+# postgres_todos_password = "tu_contraseña_todos"

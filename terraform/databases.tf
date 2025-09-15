@@ -9,7 +9,7 @@ resource "azurerm_postgresql_server" "auth" {
   geo_redundant_backup_enabled = false
   auto_grow_enabled          = true
   administrator_login        = "adminuser"
-  administrator_login_password = var.postgres_auth_password
+  administrator_login_password = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
   version                    = "11"
   ssl_enforcement_enabled    = true
 }
@@ -33,7 +33,7 @@ resource "azurerm_postgresql_server" "users" {
   geo_redundant_backup_enabled = false
   auto_grow_enabled          = true
   administrator_login        = "adminuser"
-  administrator_login_password = var.postgres_users_password
+  administrator_login_password = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
   version                    = "11"
   ssl_enforcement_enabled    = true
 }
@@ -57,7 +57,7 @@ resource "azurerm_postgresql_server" "todos" {
   geo_redundant_backup_enabled = false
   auto_grow_enabled          = true
   administrator_login        = "adminuser"
-  administrator_login_password = var.postgres_todos_password
+  administrator_login_password = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
   version                    = "11"
   ssl_enforcement_enabled    = true
 }
