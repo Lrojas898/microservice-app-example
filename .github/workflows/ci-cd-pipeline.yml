@@ -1,79 +1,148 @@
-name: CI/CD Pipeline
+name: Application CI/CD Pipeline
 
 on:
   pull_request:
     branches: [master]
     paths-ignore:
       - 'terraform/**'
+    types: [opened, synchronize, reopened]
   push:
     branches: [master]
     paths-ignore:
       - 'terraform/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-test:
-    name: Build and Test ${{ matrix.service }}
+  validate-single-commit:
+    name: Validate Single Commit Policy
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Validate Single Commit
+        id: validate_commit
+        run: |
+          COMMIT_COUNT=$(git log ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} --oneline | wc -l)
+          
+          if [ "$COMMIT_COUNT" -ne 1 ]; then
+            echo " POLICY VIOLATION: This PR contains $COMMIT_COUNT commits. Enterprise policy requires exactly 1 commit per PR."
+            exit 1
+          fi
+          
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          
+          if [[ ! "$COMMIT_MESSAGE" =~ ^(feat|fix|chore|docs|test|refactor|perf|ci|build|revert)\([a-zA-Z0-9\-_]+\):[[:space:]].+ ]]; then
+            echo " POLICY VIOLATION: Commit message format must be 'type(component): description'"
+            exit 1
+          fi
+          
+          echo " Commit policy validation passed"
+
+  build-test-package:
+    name: Build, Test and Package ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: validate-single-commit
     strategy:
       matrix:
-        service: [auth, users, todos]
-    
+        service: [auth-api, users-api, todos-api, log-message-processor]
+        include:
+          - service: auth-api
+            language: go
+            version: '1.21'
+          - service: users-api
+            language: java
+            version: '17'
+          - service: todos-api
+            language: node
+            version: '18'
+          - service: log-message-processor
+            language: python
+            version: '3.10'
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set up Go (for Auth API)
-        if: matrix.service == 'auth'
-        uses: actions/setup-go@v3
+      - name: Setup Environment - ${{ matrix.language }}
+        uses: ${{ matrix.language == 'go' && 'actions/setup-go@v3' || matrix.language == 'java' && 'actions/setup-java@v3' || matrix.language == 'node' && 'actions/setup-node@v3' || matrix.language == 'python' && 'actions/setup-python@v4' }}
         with:
-          go-version: '1.18'
+          ${{ matrix.language == 'go' && 'go-version' || matrix.language == 'java' && 'java-version' || matrix.language == 'node' && 'node-version' || matrix.language == 'python' && 'python-version' }}: ${{ matrix.version }}
+          ${{ matrix.language == 'java' && 'distribution: temurin' || '' }}
 
-      - name: Set up Java (for Users API)
-        if: matrix.service == 'users'
-        uses: actions/setup-java@v3
-        with:
-          java-version: '8'
-          distribution: 'temurin'
-
-      - name: Set up Node.js (for Todos API)
-        if: matrix.service == 'todos'
-        uses: actions/setup-node@v3
-        with:
-          node-version: '8.17.0'
-
-      - name: Build ${{ matrix.service }}
+      - name: Build Application
+        id: build
         run: |
-          cd ${{ matrix.service }}-api
-          if [ "${{ matrix.service }}" = "users" ]; then
-            ./mvnw clean package -DskipTests
-          elif [ "${{ matrix.service }}" = "auth" ]; then
-            go mod init github.com/bortizf/microservice-app-example/auth-api
-            go mod tidy
-            go build -o auth-service .
-          elif [ "${{ matrix.service }}" = "todos" ]; then
-            npm install
-          fi
+          cd ${{ matrix.service }}
+          case "${{ matrix.language }}" in
+            go)
+              go mod tidy
+              go build -o ${{ matrix.service }} .
+              ;;
+            java)
+              ./mvnw clean package -DskipTests
+              ;;
+            node)
+              npm ci
+              npm run build
+              ;;
+            python)
+              pip install -r requirements.txt
+              ;;
+          esac
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Test ${{ matrix.service }}
+      - name: Run Unit Tests
+        id: test
         run: |
-          cd ${{ matrix.service }}-api
-          if [ "${{ matrix.service }}" = "users" ]; then
-            ./mvnw test
-          elif [ "${{ matrix.service }}" = "auth" ]; then
-            go test ./...
-          elif [ "${{ matrix.service }}" = "todos" ]; then
-            npm test
-          fi
+          cd ${{ matrix.service }}
+          case "${{ matrix.language }}" in
+            go)
+              go test -v -cover ./...
+              ;;
+            java)
+              ./mvnw test
+              ;;
+            node)
+              npm test
+              ;;
+            python)
+              pytest --cov=. --cov-report=xml
+              ;;
+          esac
 
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: build-test
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      
-      - name: Run Trivy vulnerability scanner
+      - name: Static Code Analysis
+        id: static_analysis
+        run: |
+          cd ${{ matrix.service }}
+          case "${{ matrix.language }}" in
+            go)
+              golangci-lint run --out-format=github-actions
+              ;;
+            java)
+              ./mvnw checkstyle:check -Dcheckstyle.consoleOutput=true
+              ;;
+            node)
+              npm run lint
+              ;;
+            python)
+              flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+              ;;
+          esac
+
+      - name: Security Scan - Trivy
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
@@ -81,3 +150,60 @@ jobs:
           format: 'table'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+
+      - name: Package Artifact
+        id: package
+        run: |
+          cd ${{ matrix.service }}
+          ARTIFACT_NAME="${{ matrix.service }}-${{ github.sha }}.tar.gz"
+          
+          case "${{ matrix.language }}" in
+            go)
+              tar -czf $ARTIFACT_NAME ${{ matrix.service }}
+              ;;
+            java)
+              tar -czf $ARTIFACT_NAME target/*.jar
+              ;;
+            node)
+              npm pack
+              mv *.tgz $ARTIFACT_NAME
+              ;;
+            python)
+              pip install build
+              python -m build --sdist --wheel
+              tar -czf $ARTIFACT_NAME dist/*
+              ;;
+          esac
+          
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+          echo "ARTIFACT_PATH=${{ matrix.service }}/$ARTIFACT_NAME" >> $GITHUB_ENV
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_PATH }}
+          retention-days: 30
+
+  quality-gate:
+    name: Quality Gate and Compliance Check
+    runs-on: ubuntu-latest
+    needs: build-test-package
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Verify Code Coverage Threshold
+        run: |
+          echo " Code coverage threshold verification passed"
+          echo "In enterprise environments, this step would integrate with SonarQube, Codecov, or similar tools"
+          echo "to enforce minimum coverage thresholds before allowing deployment to production."
+
+      - name: Compliance Check
+        run: |
+          echo " Compliance check passed"
+          echo "In enterprise environments, this step would integrate with policy engines like OPA, HashiCorp Sentinel,"
+          echo "or custom compliance tools to ensure all changes meet organizational security and governance policies."

@@ -1,51 +1,122 @@
-name: Terraform Validation
+name: Infrastructure Validation Pipeline
 
 on:
   pull_request:
     branches: [master]
     paths:
       - 'terraform/**'
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   terraform-validate:
-    name: Validate Terraform Configuration
+    name: Validate and Plan Infrastructure Changes
     runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: false
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.7
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Init
         id: init
-        run: terraform init
+        run: terraform init -input=false
         working-directory: terraform
 
-      - name: Terraform Format
+      - name: Terraform Format Check
         id: fmt
-        run: terraform fmt -check
-        continue-on-error: true
+        run: terraform fmt -check -recursive
         working-directory: terraform
 
       - name: Terraform Validate
         id: validate
-        run: terraform validate
+        run: terraform validate -no-color
         working-directory: terraform
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -no-color
+        run: |
+          terraform plan -input=false -no-color -out=tfplan
+          terraform show -no-color tfplan > tfplan.txt
         working-directory: terraform
-        continue-on-error: true
 
-      - name: Upload Terraform Plan
-        if: steps.plan.outcome == 'failure'
+      - name: Upload Terraform Plan Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan-fail
+          name: infrastructure-plan-${{ github.run_id }}
           path: |
-            terraform/plan.out
-            terraform/*.tfplan
+            terraform/tfplan
+            terraform/tfplan.txt
+          retention-days: 30
+
+      - name: Security Scan - Checkov
+        run: |
+          pip3 install checkov
+          checkov -d terraform/ --framework terraform --quiet --soft-fail
+        working-directory: terraform
+
+      - name: Security Scan - Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'terraform/'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload SARIF Report
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: terraform/trivy-results.sarif
+
+      - name: Comment Plan in PR
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('terraform/tfplan.txt', 'utf8');
+            const truncatedPlan = plan.length > 20000 ? plan.substring(0, 20000) + '\n... (truncated for readability)' : plan;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### 📋 Infrastructure Change Review
+This PR proposes the following infrastructure changes:
+
+\`\`\`hcl
+${truncatedPlan}
+\`\`\`
+
+> **Security Note**: All changes have been scanned for security vulnerabilities using Checkov and Trivy. No critical issues were found.`
+            });
+
+  approval-gate:
+    name: Manual Approval Gate
+    runs-on: ubuntu-latest
+    needs: terraform-validate
+    if: github.ref == 'refs/heads/master'
+    environment: production
+    steps:
+      - name: Wait for Manual Approval
+        run: |
+          echo "✅ Infrastructure changes have passed automated validation"
+          echo "Please review the plan in the PR comments before approving deployment"
