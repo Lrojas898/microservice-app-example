@@ -33,14 +33,16 @@ jobs:
           terraform show -json tfplan > tfplan.json
         working-directory: terraform
 
-      - name: Install Cost Tools
+      - name: Install Dependencies
         run: |
-          pip3 install infracost
+          sudo apt-get update && sudo apt-get install -y jq bc
 
       - name: Run Cost Analysis
         run: |
           cd terraform
           # Configurar Infracost
+          curl -fsSL https://raw.githubusercontent.com/infracost/actions/v3/scripts/install.sh | bash
+          echo "INFRACOST_API_KEY=${{ secrets.INFRACOST_API_KEY }}" >> $GITHUB_ENV
           infracost configure set api_key ${{ secrets.INFRACOST_API_KEY }}
           
           # Analizar costos

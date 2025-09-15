@@ -30,6 +30,12 @@ jobs:
         run: terraform init -input=false
         working-directory: terraform
 
+      - name: Terraform Plan
+        run: |
+          terraform plan -input=false -no-color -out=tfplan
+          terraform show -no-color tfplan > tfplan.txt
+        working-directory: terraform
+
       - name: Terraform Apply
         run: terraform apply -input=false -auto-approve tfplan
         working-directory: terraform

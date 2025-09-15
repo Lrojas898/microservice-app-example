@@ -76,7 +76,7 @@ jobs:
           scan-type: 'config'
           scan-ref: 'terraform/'
           format: 'sarif'
-          output: 'trivy-results.sarif'
+          output: 'terraform/trivy-results.sarif'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
 
