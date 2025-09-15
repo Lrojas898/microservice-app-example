@@ -47,13 +47,70 @@ jobs:
           
           echo " Commit policy validation passed"
 
+  detect-changed-services:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Detect Changed Services
+        id: detect
+        run: |
+          # Obtener los archivos modificados en el PR
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
+          
+          # Determinar qué servicios han cambiado
+          SERVICES=""
+          
+          if echo "$CHANGED_FILES" | grep -q "^auth-api/"; then
+            SERVICES="auth-api"
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q "^users-api/"; then
+            if [ -n "$SERVICES" ]; then
+              SERVICES="$SERVICES,users-api"
+            else
+              SERVICES="users-api"
+            fi
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q "^todos-api/"; then
+            if [ -n "$SERVICES" ]; then
+              SERVICES="$SERVICES,todos-api"
+            else
+              SERVICES="todos-api"
+            fi
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q "^log-message-processor/"; then
+            if [ -n "$SERVICES" ]; then
+              SERVICES="$SERVICES,log-message-processor"
+            else
+              SERVICES="log-message-processor"
+            fi
+          fi
+          
+          # Si no se detectan cambios en microservicios, ejecutar todos (fallback seguro)
+          if [ -z "$SERVICES" ]; then
+            SERVICES="auth-api,users-api,todos-api,log-message-processor"
+            echo " No se detectaron cambios específicos de microservicios. Ejecutando pruebas en todos los servicios."
+          fi
+          
+          echo "SERVICES=$SERVICES" >> $GITHUB_OUTPUT
+          echo "Servicios afectados: $SERVICES"
+
   build-test-package:
     name: Build, Test and Package ${{ matrix.service }}
     runs-on: ubuntu-latest
-    needs: validate-single-commit
+    needs: [validate-single-commit, detect-changed-services]
     strategy:
       matrix:
-        service: [auth-api, users-api, todos-api, log-message-processor]
+        service: ${{ fromJSON('["' + join(split(needs.detect-changed-services.outputs.services, ','), '","') + '"]') }}
         include:
           - service: auth-api
             language: go
