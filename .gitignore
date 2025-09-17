@@ -7,6 +7,38 @@ terraform.tfvars
 *.auto.tfvars
 .terraform.lock.hcl
 
+# Ignore all .terraform directories recursively
+**/.terraform/
+
+# Ignore sensitive variable files
+**/terraform.tfvars
+**/*.auto.tfvars
+
+# Ignore plan files
+**/*.tfplan
+
+# Ignore backup files
+**/*.tfstate.backup
+
+# Ignore crash logs
+crash.log
+
+# Ignore override files
+override.tf
+override.tf.json
+**/override.tf
+**/override.tf.json
+
+# Ignore secret documentation (if any)
+**/README-SECRETS.md
+
+# Ignore OS and editor files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+.vscode/
+
 # Archivos temporales
 *.log
 *.tmp
