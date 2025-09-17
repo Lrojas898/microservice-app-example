@@ -11,6 +11,18 @@ variable "location" {
   default     = "westus2"
 }
 
+variable "resource_group_location" {
+  description = "Región del Resource Group (no mover si ya existe)"
+  type        = string
+  default     = "eastus"
+}
+
+variable "db_location" {
+  description = "Región para PostgreSQL Flexible Servers"
+  type        = string
+  default     = "eastus"
+}
+
 # Variables para la red virtual
 variable "vnet_address_space" {
   description = "Espacio de direcciones para la red virtual"

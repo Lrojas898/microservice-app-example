@@ -2,7 +2,7 @@
 resource "azurerm_postgresql_flexible_server" "auth" {
   name                   = "auth-db-server"
   resource_group_name    = var.resource_group_name
-  location               = var.location
+  location               = var.db_location
   version                = "12"
   administrator_login    = "adminuser"
   administrator_password = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
@@ -19,7 +19,7 @@ resource "azurerm_postgresql_flexible_server" "auth" {
 resource "azurerm_postgresql_flexible_server" "users" {
   name                   = "users-db-server"
   resource_group_name    = var.resource_group_name
-  location               = var.location
+  location               = var.db_location
   version                = "12"
   administrator_login    = "adminuser"
   administrator_password = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
@@ -36,7 +36,7 @@ resource "azurerm_postgresql_flexible_server" "users" {
 resource "azurerm_postgresql_flexible_server" "todos" {
   name                   = "todos-db-server"
   resource_group_name    = var.resource_group_name
-  location               = var.location
+  location               = var.db_location
   version                = "12"
   administrator_login    = "adminuser"
   administrator_password = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
