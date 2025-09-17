@@ -4,6 +4,10 @@ resource "azurerm_application_insights" "main" {
   location            = var.location
   resource_group_name = var.resource_group_name
   application_type    = "web"
+  # Evitar drift si fue ligado previamente a un workspace; no gestionar esa asociación desde Terraform
+  lifecycle {
+    ignore_changes = [workspace_id]
+  }
 }
 
 # Log Processor (Logic App) - CORREGIDO

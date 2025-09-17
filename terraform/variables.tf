@@ -8,7 +8,7 @@ variable "resource_group_name" {
 variable "location" {
   description = "Región de Azure"
   type        = string
-  default     = "eastus"
+  default     = "westus2"
 }
 
 # Variables para la red virtual
