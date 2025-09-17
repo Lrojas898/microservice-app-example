@@ -8,7 +8,6 @@ resource "azurerm_redis_cache" "main" {
   sku_name            = "Standard"
   non_ssl_port_enabled = false  # Corregido: enable_non_ssl_port → non_ssl_port_enabled
   minimum_tls_version = "1.2"
-  subnet_id           = var.cache_subnet_id
 }
 
 # Public IP para el Application Gateway
@@ -113,6 +112,7 @@ resource "azurerm_application_gateway" "main" {
     http_listener_name         = "auth-listener"
     backend_address_pool_name  = "auth-pool"
     backend_http_settings_name = "auth-settings"
+    priority                   = 100
   }
 
   request_routing_rule {
@@ -121,6 +121,7 @@ resource "azurerm_application_gateway" "main" {
     http_listener_name         = "users-listener"
     backend_address_pool_name  = "users-pool"
     backend_http_settings_name = "users-settings"
+    priority                   = 200
   }
 
   request_routing_rule {
@@ -129,6 +130,7 @@ resource "azurerm_application_gateway" "main" {
     http_listener_name         = "todos-listener"
     backend_address_pool_name  = "todos-pool"
     backend_http_settings_name = "todos-settings"
+    priority                   = 300
   }
 }
 

@@ -1,8 +1,8 @@
 # Azure Key Vault para almacenar secretos
 resource "azurerm_key_vault" "main" {
   name                = var.key_vault_name
-  location            = var.location
-  resource_group_name = var.resource_group_name
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
   sku_name            = "standard"
 
@@ -29,6 +29,8 @@ resource "azurerm_key_vault" "main" {
       "Get", "List", "Create", "Delete", "Update", "Import", "Backup", "Restore", "Recover"
     ]
   }
+  # Garantizar que el grupo de recursos exista antes de crear el Key Vault
+  depends_on = [azurerm_resource_group.main]
 }
 
 # Data source para obtener información del cliente actual
