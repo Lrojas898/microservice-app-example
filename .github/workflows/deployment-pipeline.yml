@@ -37,6 +37,12 @@ jobs:
         run: terraform init -input=false
         working-directory: terraform
 
+      - name: Import Existing Azure Resources (idempotent)
+        run: |
+          chmod +x scripts/import_existing.sh
+          ./scripts/import_existing.sh microservice-app-rg
+        working-directory: terraform
+
       - name: Terraform Plan
         run: |
           terraform plan -input=false -no-color -out=tfplan
