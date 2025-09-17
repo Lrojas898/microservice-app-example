@@ -5,7 +5,10 @@
 *.tfplan
 terraform.tfvars
 *.auto.tfvars
-.terraform.lock.hcl
+*/.terraform.lock.hcl
+
+terraform.tfstate
+terraform.tfstate.*
 
 # Ignore all .terraform directories recursively
 **/.terraform/
@@ -16,7 +19,7 @@ terraform.tfvars
 
 # Ignore plan files
 **/*.tfplan
-
+    
 # Ignore backup files
 **/*.tfstate.backup
 
