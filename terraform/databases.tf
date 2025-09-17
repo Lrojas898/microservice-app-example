@@ -7,7 +7,7 @@ resource "azurerm_postgresql_flexible_server" "auth" {
   administrator_login    = "adminuser"
   administrator_password = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
 
-  sku_name    = "Standard_B1ms"
+  sku_name    = "B_Standard_B1ms"
   storage_mb  = 32768
   backup_retention_days = 7
   zone        = "1"
@@ -24,7 +24,7 @@ resource "azurerm_postgresql_flexible_server" "users" {
   administrator_login    = "adminuser"
   administrator_password = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
 
-  sku_name    = "Standard_B1ms"
+  sku_name    = "B_Standard_B1ms"
   storage_mb  = 32768
   backup_retention_days = 7
   zone        = "1"
@@ -41,7 +41,7 @@ resource "azurerm_postgresql_flexible_server" "todos" {
   administrator_login    = "adminuser"
   administrator_password = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
 
-  sku_name    = "Standard_B1ms"
+  sku_name    = "B_Standard_B1ms"
   storage_mb  = 32768
   backup_retention_days = 7
   zone        = "1"

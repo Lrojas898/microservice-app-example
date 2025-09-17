@@ -6,7 +6,7 @@ resource "azurerm_redis_cache" "main" {
   capacity            = 2
   family              = "C"
   sku_name            = "Standard"
-  non_ssl_port_enabled = false  # Corregido: enable_non_ssl_port → non_ssl_port_enabled
+  # non_ssl_port_enabled no es soportado en versiones recientes; se mantiene acceso SSL por defecto
   minimum_tls_version = "1.2"
 }
 
