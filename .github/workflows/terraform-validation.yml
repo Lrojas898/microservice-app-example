@@ -43,7 +43,13 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: terraform init -input=false
+        run: terraform init -input=false -upgrade
+        working-directory: terraform
+
+      - name: Import Existing Azure Resources (idempotent)
+        run: |
+          chmod +x scripts/import_existing.sh
+          ./scripts/import_existing.sh microservice-app-rg
         working-directory: terraform
 
       - name: Terraform Format Check

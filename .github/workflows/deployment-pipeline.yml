@@ -34,7 +34,7 @@ jobs:
           terraform_version: 1.5.7
 
       - name: Terraform Init
-        run: terraform init -input=false
+        run: terraform init -input=false -upgrade
         working-directory: terraform
 
       - name: Import Existing Azure Resources (idempotent)
