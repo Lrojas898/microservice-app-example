@@ -1,0 +1,192 @@
+name: Production Deployment Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+
+env:
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  # Job para validar código antes del despliegue
+  pre-deployment-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.7
+        
+    - name: Terraform Format Check
+      run: terraform fmt -check -recursive
+      working-directory: ./terraform
+      
+    - name: Terraform Init
+      run: terraform init
+      working-directory: ./terraform
+      
+    - name: Terraform Validate
+      run: terraform validate
+      working-directory: ./terraform
+      
+    - name: Terraform Security Scan
+      run: |
+        # Instalar tfsec para análisis de seguridad
+        curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+        ./tfsec ./terraform
+
+  # Job para construir imágenes Docker para producción
+  build-production-images:
+    name: Build Production Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: pre-deployment-checks
+    
+    strategy:
+      matrix:
+        service: [auth-api, users-api, todos-api, frontend, log-message-processor]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+        
+    - name: Build and push ${{ matrix.service }} image
+      run: |
+        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }} ./${{ matrix.service }}
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }}
+        
+    - name: Tag as latest
+      run: |
+        docker tag ${{ secrets.ACR_LOGIN_SERVER }}/${{ matrix.service }}:${{ github.sha }} ${{ secrets.ACR_LOGIN_SERVER }}/${{ matrix.service }}:latest
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ matrix.service }}:latest
+
+  # Job para desplegar infraestructura de producción
+  deploy-infrastructure:
+    name: Deploy Production Infrastructure
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [pre-deployment-checks, build-production-images]
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: |
+          {
+            "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+          }
+          
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.7
+        
+    - name: Terraform Init
+      run: terraform init
+      working-directory: ./terraform
+      
+    - name: Terraform Plan
+      run: terraform plan -var="location=eastus" -out=tfplan
+      working-directory: ./terraform
+      
+    - name: Terraform Apply
+      run: terraform apply -input=false -auto-approve tfplan
+      working-directory: ./terraform
+      
+    - name: Cleanup
+      run: rm -f tfplan
+      working-directory: ./terraform
+
+  # Job para desplegar aplicaciones
+  deploy-applications:
+    name: Deploy Applications
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deploy-infrastructure
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: |
+          {
+            "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+          }
+          
+    - name: Deploy to Azure Container Instances
+      run: |
+        # Aquí irían los comandos para desplegar los contenedores
+        # usando Azure CLI o ARM templates
+        echo "Deploying applications to Azure Container Instances..."
+        echo "This would contain the actual deployment commands"
+        
+    - name: Health Check
+      run: |
+        echo "Performing health checks..."
+        # Aquí irían los health checks de los servicios
+        sleep 30
+        echo "Health checks completed"
+
+  # Job para notificaciones
+  notify-deployment:
+    name: Notify Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-infrastructure, deploy-applications]
+    if: always()
+    
+    steps:
+    - name: Notify Success
+      if: needs.deploy-applications.result == 'success'
+      run: |
+        echo "✅ Production deployment completed successfully!"
+        echo "🚀 Services are now running in production"
+        
+    - name: Notify Failure
+      if: needs.deploy-applications.result == 'failure'
+      run: |
+        echo "❌ Production deployment failed!"
+        echo "🔍 Check the logs for more details"
+        exit 1

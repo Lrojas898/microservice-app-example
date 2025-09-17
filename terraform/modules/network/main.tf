@@ -12,6 +12,14 @@ resource "azurerm_subnet" "auth" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [var.auth_subnet_prefix]
+  
+  delegation {
+    name = "postgresql-delegation"
+    service_delegation {
+      name    = "Microsoft.DBforPostgreSQL/flexibleServers"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+  }
 }
 
 # Subnet para Users Service
@@ -20,6 +28,14 @@ resource "azurerm_subnet" "users" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [var.users_subnet_prefix]
+  
+  delegation {
+    name = "postgresql-delegation"
+    service_delegation {
+      name    = "Microsoft.DBforPostgreSQL/flexibleServers"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+  }
 }
 
 # Subnet para Todos Service
@@ -28,6 +44,14 @@ resource "azurerm_subnet" "todos" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [var.todos_subnet_prefix]
+  
+  delegation {
+    name = "postgresql-delegation"
+    service_delegation {
+      name    = "Microsoft.DBforPostgreSQL/flexibleServers"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+  }
 }
 
 # Subnet para Application Gateway

@@ -36,24 +36,7 @@ resource "azurerm_key_vault" "main" {
 # Data source para obtener información del cliente actual
 data "azurerm_client_config" "current" {}
 
-# Generar contraseñas aleatorias si no se proporcionan
-resource "random_password" "postgres_auth_password" {
-  count   = var.postgres_auth_password == null ? 1 : 0
-  length  = 16
-  special = true
-}
-
-resource "random_password" "postgres_users_password" {
-  count   = var.postgres_users_password == null ? 1 : 0
-  length  = 16
-  special = true
-}
-
-resource "random_password" "postgres_todos_password" {
-  count   = var.postgres_todos_password == null ? 1 : 0
-  length  = 16
-  special = true
-}
+# Las contraseñas aleatorias se generan en databases.tf
 
 # Almacenar contraseñas en Key Vault
 resource "azurerm_key_vault_secret" "postgres_auth_password" {
