@@ -13,12 +13,7 @@ resource "azurerm_postgresql_flexible_server" "auth" {
   zone        = "1"
 }
 
-resource "azurerm_postgresql_flexible_database" "auth" {
-  name      = "authdb"
-  server_id = azurerm_postgresql_flexible_server.auth.id
-  charset   = "UTF8"
-  collation = "en_US.utf8"
-}
+## Nota: Eliminado el recurso de base de datos para evitar fallo de esquema en el provider. La app usará DB_NAME estático.
 
 # PostgreSQL Flexible Server para Users Service
 resource "azurerm_postgresql_flexible_server" "users" {
@@ -35,12 +30,7 @@ resource "azurerm_postgresql_flexible_server" "users" {
   zone        = "1"
 }
 
-resource "azurerm_postgresql_flexible_database" "users" {
-  name      = "usersdb"
-  server_id = azurerm_postgresql_flexible_server.users.id
-  charset   = "UTF8"
-  collation = "en_US.utf8"
-}
+## Nota: Eliminado el recurso de base de datos; la app usará DB_NAME estático.
 
 # PostgreSQL Flexible Server para Todos Service
 resource "azurerm_postgresql_flexible_server" "todos" {
@@ -57,9 +47,4 @@ resource "azurerm_postgresql_flexible_server" "todos" {
   zone        = "1"
 }
 
-resource "azurerm_postgresql_flexible_database" "todos" {
-  name      = "todosdb"
-  server_id = azurerm_postgresql_flexible_server.todos.id
-  charset   = "UTF8"
-  collation = "en_US.utf8"
-}
+## Nota: Eliminado el recurso de base de datos; la app usará DB_NAME estático.
