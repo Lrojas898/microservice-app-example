@@ -61,6 +61,24 @@ variable "cache_subnet_prefix" {
   default     = "10.0.5.0/24"
 }
 
+variable "auth_container_subnet_prefix" {
+  description = "Prefijo de dirección para la subnet de Auth Container"
+  type        = string
+  default     = "10.0.6.0/24"
+}
+
+variable "users_container_subnet_prefix" {
+  description = "Prefijo de dirección para la subnet de Users Container"
+  type        = string
+  default     = "10.0.7.0/24"
+}
+
+variable "todos_container_subnet_prefix" {
+  description = "Prefijo de dirección para la subnet de Todos Container"
+  type        = string
+  default     = "10.0.8.0/24"
+}
+
 # Variables para contraseñas de bases de datos
 variable "postgres_auth_password" {
   description = "Contraseña para el servidor PostgreSQL de Auth"

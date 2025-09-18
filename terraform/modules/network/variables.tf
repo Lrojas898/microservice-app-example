@@ -37,3 +37,18 @@ variable "cache_subnet_prefix" {
   description = "Prefijo de dirección para la subnet de Cache"
   type        = string
 }
+
+variable "auth_container_subnet_prefix" {
+  description = "Prefijo de dirección para la subnet de Auth Container"
+  type        = string
+}
+
+variable "users_container_subnet_prefix" {
+  description = "Prefijo de dirección para la subnet de Users Container"
+  type        = string
+}
+
+variable "todos_container_subnet_prefix" {
+  description = "Prefijo de dirección para la subnet de Todos Container"
+  type        = string
+}

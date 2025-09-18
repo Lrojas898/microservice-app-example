@@ -5,7 +5,7 @@ resource "azurerm_container_group" "auth" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "Private"
   os_type             = "Linux"
-  subnet_ids          = [module.network.auth_subnet_id]
+  subnet_ids          = [module.network.auth_container_subnet_id]
 
   container {
     name   = "auth-container"
@@ -30,6 +30,11 @@ resource "azurerm_container_group" "auth" {
       REDIS_PASSWORD = module.security.redis_cache_primary_key
     }
   }
+
+  depends_on = [
+    module.network,
+    azurerm_postgresql_flexible_server.auth
+  ]
 }
 
 # Users Service en Azure Container Instance
@@ -39,7 +44,7 @@ resource "azurerm_container_group" "users" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "Private"
   os_type             = "Linux"
-  subnet_ids          = [module.network.users_subnet_id]
+  subnet_ids          = [module.network.users_container_subnet_id]
 
   container {
     name   = "users-container"
@@ -63,6 +68,11 @@ resource "azurerm_container_group" "users" {
       SPRING_REDIS_PASSWORD      = module.security.redis_cache_primary_key
     }
   }
+
+  depends_on = [
+    module.network,
+    azurerm_postgresql_flexible_server.users
+  ]
 }
 
 # Todos Service en Azure Container Instance
@@ -72,7 +82,7 @@ resource "azurerm_container_group" "todos" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "Private"
   os_type             = "Linux"
-  subnet_ids          = [module.network.todos_subnet_id]
+  subnet_ids          = [module.network.todos_container_subnet_id]
 
   container {
     name   = "todos-container"
@@ -97,4 +107,9 @@ resource "azurerm_container_group" "todos" {
       REDIS_PASSWORD = module.security.redis_cache_primary_key
     }
   }
+
+  depends_on = [
+    module.network,
+    azurerm_postgresql_flexible_server.todos
+  ]
 }
