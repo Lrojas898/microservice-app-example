@@ -4,7 +4,7 @@ on:
   push:
     branches: [ 'feature/*', 'hotfix/*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 env:
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}

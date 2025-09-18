@@ -2,7 +2,7 @@ name: Infrastructure Validation Pipeline
 
 on:
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - 'terraform/**'
     types: [opened, synchronize, reopened]
@@ -127,7 +127,7 @@ ${truncatedPlan}
     name: Manual Approval Gate
     runs-on: ubuntu-latest
     needs: terraform-validate
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     environment: production
     steps:
       - name: Wait for Manual Approval
