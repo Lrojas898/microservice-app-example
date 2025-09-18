@@ -3,6 +3,7 @@ name: Production Deployment Pipeline
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
   workflow_dispatch:
     inputs:
       environment:
@@ -12,6 +13,7 @@ on:
         type: choice
         options:
         - production
+        - staging
 
 env:
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -103,7 +105,7 @@ jobs:
       working-directory: ./terraform
       
     - name: Terraform Plan
-      run: terraform plan -var="location=eastus" -var="resource_group_location=eastus" -var="db_location=eastus" -out=tfplan
+      run: terraform plan -var="location=centralus" -var="resource_group_location=centralus" -var="db_location=centralus" -out=tfplan
       working-directory: ./terraform
       
     - name: Terraform Apply

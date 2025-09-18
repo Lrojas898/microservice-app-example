@@ -2,7 +2,7 @@ name: Development Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -100,7 +100,7 @@ jobs:
       working-directory: ./terraform
       
     - name: Terraform Plan
-      run: terraform plan -var="location=eastus" -var="resource_group_location=eastus" -var="db_location=eastus" -out=tfplan
+      run: terraform plan -var="location=centralus" -var="resource_group_location=centralus" -var="db_location=centralus" -out=tfplan
       working-directory: ./terraform
       
     - name: Terraform Apply
