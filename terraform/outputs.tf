@@ -35,7 +35,7 @@ output "redis_cache_hostname" {
 }
 
 output "redis_cache_primary_key" {
-  value = module.security.redis_cache_primary_key
+  value     = module.security.redis_cache_primary_key
   sensitive = true
 }
 
@@ -49,16 +49,25 @@ output "key_vault_uri" {
 }
 
 output "postgres_auth_password" {
-  value = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
+  value     = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
   sensitive = true
 }
 
 output "postgres_users_password" {
-  value = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
+  value     = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
   sensitive = true
 }
 
 output "postgres_todos_password" {
-  value = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
+  value     = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
   sensitive = true
+}
+
+# Frontend URL
+output "frontend_url" {
+  value = "http://${azurerm_container_group.frontend.fqdn}"
+}
+
+output "frontend_ip" {
+  value = azurerm_container_group.frontend.ip_address
 }

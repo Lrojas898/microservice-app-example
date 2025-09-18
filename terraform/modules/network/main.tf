@@ -115,3 +115,18 @@ resource "azurerm_subnet" "todos_container" {
     }
   }
 }
+
+resource "azurerm_subnet" "frontend_container" {
+  name                 = "frontend-container-subnet"
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [var.frontend_container_subnet_prefix]
+
+  delegation {
+    name = "container-delegation"
+    service_delegation {
+      name    = "Microsoft.ContainerInstance/containerGroups"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
+    }
+  }
+}

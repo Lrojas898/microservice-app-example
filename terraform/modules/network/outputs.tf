@@ -33,3 +33,7 @@ output "users_container_subnet_id" {
 output "todos_container_subnet_id" {
   value = azurerm_subnet.todos_container.id
 }
+
+output "frontend_container_subnet_id" {
+  value = azurerm_subnet.frontend_container.id
+}

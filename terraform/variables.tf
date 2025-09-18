@@ -79,6 +79,12 @@ variable "todos_container_subnet_prefix" {
   default     = "10.0.8.0/24"
 }
 
+variable "frontend_container_subnet_prefix" {
+  description = "Prefijo de dirección para la subnet de Frontend Container"
+  type        = string
+  default     = "10.0.9.0/24"
+}
+
 # Variables para contraseñas de bases de datos
 variable "postgres_auth_password" {
   description = "Contraseña para el servidor PostgreSQL de Auth"

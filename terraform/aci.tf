@@ -113,3 +113,43 @@ resource "azurerm_container_group" "todos" {
     azurerm_postgresql_flexible_server.todos
   ]
 }
+
+# Frontend Service en Azure Container Instance
+resource "azurerm_container_group" "frontend" {
+  name                = "frontend-service"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  ip_address_type     = "Public"
+  dns_name_label      = "microservice-frontend-${random_string.unique.result}"
+  os_type             = "Linux"
+
+  container {
+    name   = "frontend-container"
+    image  = "osgomez/frontend:latest"
+    cpu    = "1"
+    memory = "1.5"
+
+    ports {
+      port     = 80
+      protocol = "TCP"
+    }
+
+    environment_variables = {
+      AUTH_API_ADDRESS  = "http://${azurerm_container_group.auth.ip_address}:8000"
+      TODOS_API_ADDRESS = "http://${azurerm_container_group.todos.ip_address}:8082"
+    }
+  }
+
+  depends_on = [
+    module.network,
+    azurerm_container_group.auth,
+    azurerm_container_group.todos
+  ]
+}
+
+# Random string for unique naming
+resource "random_string" "unique" {
+  length  = 8
+  special = false
+  upper   = false
+}

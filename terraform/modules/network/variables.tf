@@ -52,3 +52,8 @@ variable "todos_container_subnet_prefix" {
   description = "Prefijo de dirección para la subnet de Todos Container"
   type        = string
 }
+
+variable "frontend_container_subnet_prefix" {
+  description = "Prefijo de dirección para la subnet de Frontend Container"
+  type        = string
+}
