@@ -4,8 +4,10 @@ FROM python:3.7-slim
 # Establecer directorio de trabajo
 WORKDIR /app
 
-# Instalar redis (requerido para consumir mensajes de Redis)
-RUN pip install redis
+
+# Instalar dependencias desde requirements.txt (mejor práctica)
+COPY requirements.txt ./
+RUN pip install -r requirements.txt
 
 # Copiar el resto de la aplicación
 COPY . .

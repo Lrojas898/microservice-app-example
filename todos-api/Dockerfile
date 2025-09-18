@@ -1,5 +1,5 @@
-# Usar Node.js 8.17.0 (versión especificada en tu README.md)
-FROM node:8.17.0-alpine
+# Usar Node.js 14 LTS
+FROM node:14.21.3-alpine
 
 # Establecer directorio de trabajo
 WORKDIR /app

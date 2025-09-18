@@ -7,10 +7,10 @@ resource "azurerm_key_vault" "main" {
   sku_name            = "standard"
 
   # Habilitar acceso desde Azure AD
-  enabled_for_disk_encryption = true
-  enabled_for_deployment      = true
+  enabled_for_disk_encryption     = true
+  enabled_for_deployment          = true
   enabled_for_template_deployment = true
-  purge_protection_enabled    = false
+  purge_protection_enabled        = false
 
   # Política de acceso para el usuario actual
   access_policy {
@@ -27,6 +27,16 @@ resource "azurerm_key_vault" "main" {
 
     certificate_permissions = [
       "Get", "List", "Create", "Delete", "Update", "Import", "Backup", "Restore", "Recover"
+    ]
+  }
+
+  # Política de acceso para el service principal de Terraform (oid: ed9eb106-e194-4ce0-9814-f9d70de65329)
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = "ed9eb106-e194-4ce0-9814-f9d70de65329"
+
+    secret_permissions = [
+      "Get", "List", "Purge"
     ]
   }
   # Garantizar que el grupo de recursos exista antes de crear el Key Vault

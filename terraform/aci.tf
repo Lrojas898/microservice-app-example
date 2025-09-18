@@ -9,7 +9,7 @@ resource "azurerm_container_group" "auth" {
 
   container {
     name   = "auth-container"
-    image  = "your-dockerhub-repo/auth-service:latest"
+    image  = "osgomez/auth-service:latest"
     cpu    = "1"
     memory = "1.5"
 
@@ -20,14 +20,14 @@ resource "azurerm_container_group" "auth" {
     }
 
     environment_variables = {
-      PORT                  = "8000"
-      DB_HOST               = azurerm_postgresql_flexible_server.auth.fqdn
-      DB_NAME               = "authdb"
-      DB_USER               = azurerm_postgresql_flexible_server.auth.administrator_login
-      DB_PASSWORD           = var.postgres_auth_password
-      REDIS_HOST            = module.security.redis_cache_hostname
-      REDIS_PORT            = "6380"
-      REDIS_PASSWORD        = module.security.redis_cache_primary_key
+      PORT           = "8000"
+      DB_HOST        = azurerm_postgresql_flexible_server.auth.fqdn
+      DB_NAME        = "authdb"
+      DB_USER        = azurerm_postgresql_flexible_server.auth.administrator_login
+      DB_PASSWORD    = var.postgres_auth_password
+      REDIS_HOST     = module.security.redis_cache_hostname
+      REDIS_PORT     = "6380"
+      REDIS_PASSWORD = module.security.redis_cache_primary_key
     }
   }
 }
@@ -43,7 +43,7 @@ resource "azurerm_container_group" "users" {
 
   container {
     name   = "users-container"
-    image  = "your-dockerhub-repo/users-service:latest"
+    image  = "osgomez/users-service:latest"
     cpu    = "1"
     memory = "1.5"
 
@@ -54,13 +54,13 @@ resource "azurerm_container_group" "users" {
     }
 
     environment_variables = {
-      SERVER_PORT           = "8083"
-      SPRING_DATASOURCE_URL = "jdbc:postgresql://${azurerm_postgresql_flexible_server.users.fqdn}:5432/usersdb"
+      SERVER_PORT                = "8083"
+      SPRING_DATASOURCE_URL      = "jdbc:postgresql://${azurerm_postgresql_flexible_server.users.fqdn}:5432/usersdb"
       SPRING_DATASOURCE_USERNAME = azurerm_postgresql_flexible_server.users.administrator_login
       SPRING_DATASOURCE_PASSWORD = var.postgres_users_password
-      SPRING_REDIS_HOST     = module.security.redis_cache_hostname
-      SPRING_REDIS_PORT     = "6380"
-      SPRING_REDIS_PASSWORD = module.security.redis_cache_primary_key
+      SPRING_REDIS_HOST          = module.security.redis_cache_hostname
+      SPRING_REDIS_PORT          = "6380"
+      SPRING_REDIS_PASSWORD      = module.security.redis_cache_primary_key
     }
   }
 }
@@ -76,7 +76,7 @@ resource "azurerm_container_group" "todos" {
 
   container {
     name   = "todos-container"
-    image  = "your-dockerhub-repo/todos-service:latest"
+    image  = "osgomez/todos-service:latest"
     cpu    = "1"
     memory = "1.5"
 
@@ -87,14 +87,14 @@ resource "azurerm_container_group" "todos" {
     }
 
     environment_variables = {
-      PORT                  = "8082"
-      DB_HOST               = azurerm_postgresql_flexible_server.todos.fqdn
-      DB_NAME               = "todosdb"
-      DB_USER               = azurerm_postgresql_flexible_server.todos.administrator_login
-      DB_PASSWORD           = var.postgres_todos_password
-      REDIS_HOST            = module.security.redis_cache_hostname
-      REDIS_PORT            = "6380"
-      REDIS_PASSWORD        = module.security.redis_cache_primary_key
+      PORT           = "8082"
+      DB_HOST        = azurerm_postgresql_flexible_server.todos.fqdn
+      DB_NAME        = "todosdb"
+      DB_USER        = azurerm_postgresql_flexible_server.todos.administrator_login
+      DB_PASSWORD    = var.postgres_todos_password
+      REDIS_HOST     = module.security.redis_cache_hostname
+      REDIS_PORT     = "6380"
+      REDIS_PASSWORD = module.security.redis_cache_primary_key
     }
   }
 }

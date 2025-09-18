@@ -71,7 +71,7 @@ resource "azurerm_application_gateway" "main" {
     cookie_based_affinity = "Disabled"
     port                  = 8083
     protocol              = "Http"
-    request_timeout       = 45  # Aumentado para manejar heterogeneidad de respuesta
+    request_timeout       = 45 # Aumentado para manejar heterogeneidad de respuesta
   }
 
   backend_http_settings {
@@ -134,13 +134,6 @@ resource "azurerm_application_gateway" "main" {
   }
 }
 
-# Application Insights
-resource "azurerm_application_insights" "main" {
-  name                = "microservice-appinsights"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  application_type    = "web"
-}
 
 # Log Processor (Logic App) - CORREGIDO
 resource "azurerm_logic_app_workflow" "log_processor" {

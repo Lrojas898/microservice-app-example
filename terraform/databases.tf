@@ -26,15 +26,16 @@ resource "azurerm_postgresql_flexible_server" "auth" {
   administrator_login    = "adminuser"
   administrator_password = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
 
-  sku_name    = "B_Standard_B1ms"
-  storage_mb  = 32768
+  sku_name              = "B_Standard_B1ms"
+  storage_mb            = 32768
   backup_retention_days = 7
-  zone        = "1"
-  
+  zone                  = "1"
+
   # Configuración de red simplificada
-  delegated_subnet_id = module.network.auth_subnet_id
-  private_dns_zone_id = azurerm_private_dns_zone.postgres.id
-  
+  delegated_subnet_id           = module.network.auth_subnet_id
+  private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
+  public_network_access_enabled = false
+
   depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
 }
 
@@ -49,15 +50,16 @@ resource "azurerm_postgresql_flexible_server" "users" {
   administrator_login    = "adminuser"
   administrator_password = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
 
-  sku_name    = "B_Standard_B1ms"
-  storage_mb  = 32768
+  sku_name              = "B_Standard_B1ms"
+  storage_mb            = 32768
   backup_retention_days = 7
-  zone        = "1"
-  
+  zone                  = "1"
+
   # Configuración de red
-  delegated_subnet_id = module.network.users_subnet_id
-  private_dns_zone_id = azurerm_private_dns_zone.postgres.id
-  
+  delegated_subnet_id           = module.network.users_subnet_id
+  private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
+  public_network_access_enabled = false
+
   depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
 }
 
@@ -72,15 +74,16 @@ resource "azurerm_postgresql_flexible_server" "todos" {
   administrator_login    = "adminuser"
   administrator_password = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
 
-  sku_name    = "B_Standard_B1ms"
-  storage_mb  = 32768
+  sku_name              = "B_Standard_B1ms"
+  storage_mb            = 32768
   backup_retention_days = 7
-  zone        = "1"
-  
+  zone                  = "1"
+
   # Configuración de red
-  delegated_subnet_id = module.network.todos_subnet_id
-  private_dns_zone_id = azurerm_private_dns_zone.postgres.id
-  
+  delegated_subnet_id           = module.network.todos_subnet_id
+  private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
+  public_network_access_enabled = false
+
   depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
 }
 
