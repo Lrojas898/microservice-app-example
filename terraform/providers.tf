@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.5.7"
-  
+
   # Backend remoto para almacenar el estado (comentado para desarrollo local)
   # Descomenta y configura cuando tengas un storage account
   # backend "azurerm" {
@@ -9,7 +9,7 @@ terraform {
   #   container_name       = "tfstate"
   #   key                  = "microservice-app.tfstate"
   # }
-  
+
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
