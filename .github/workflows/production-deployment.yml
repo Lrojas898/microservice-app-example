@@ -185,7 +185,9 @@ jobs:
     - name: Terraform Init
       run: |
         echo "🔑 Initializing Terraform with remote backend..."
-        terraform init -upgrade
+        terraform init \
+          -backend-config="storage_account_key=${{ secrets.TF_STATE_STORAGE_ACCOUNT_KEY }}" \
+          -upgrade
       working-directory: ./terraform
       
     - name: Terraform Plan
@@ -197,6 +199,9 @@ jobs:
           -var="resource_group_location=centralus" \
           -var="db_location=centralus" \
           -var="subscriptionId=${{ env.AZURE_SUBSCRIPTION_ID }}" \
+          -var="client_id=${{ env.AZURE_CLIENT_ID }}" \
+          -var="client_secret=${{ env.AZURE_CLIENT_SECRET }}" \
+          -var="tenant_id=${{ env.AZURE_TENANT_ID }}" \
           -var="users_api_image=${{ needs.build-production-images.outputs.users_api_image }}" \
           -var="auth_api_image=${{ needs.build-production-images.outputs.auth_api_image }}" \
           -var="todos_api_image=${{ needs.build-production-images.outputs.todos_api_image }}" \
