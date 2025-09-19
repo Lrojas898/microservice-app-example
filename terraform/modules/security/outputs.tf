@@ -7,6 +7,6 @@ output "redis_cache_hostname" {
 }
 
 output "redis_cache_primary_key" {
-  value = azurerm_redis_cache.main.primary_access_key
+  value     = azurerm_redis_cache.main.primary_access_key
   sensitive = true
 }
