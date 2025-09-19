@@ -2,15 +2,13 @@ name: Development Pipeline
 
 on:
   push:
-    branches: [ master ]
+    branches: [ develop, dev, feature/* ]
   pull_request:
-    branches: [ master ]
+    branches: [ develop, dev ]
 
 env:
-  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  # Solo necesitamos DOCKERHUB_USERNAME si vamos a hacer push (opcional)
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
   # Job para validar y formatear código
@@ -32,66 +30,129 @@ jobs:
       run: terraform fmt -check -recursive
       working-directory: ./terraform
       
-    - name: Terraform Init
-      run: terraform init
+    - name: Terraform Init (Validation Only)
+      run: |
+        echo "🔑 Initializing Terraform for validation (no deployment)..."
+        terraform init -backend=false
       working-directory: ./terraform
       
     - name: Terraform Validate
       run: terraform validate
       working-directory: ./terraform
 
-  # Job para construir y probar microservicios
+  # Job para construir imágenes Docker para desarrollo
   build-services:
     name: Build Services
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     needs: code-quality
-    
-    strategy:
-      matrix:
-        service: [auth-api, users-api, todos-api, frontend, log-message-processor]
-        
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    # 👉 Verificar si es proyecto Java (tiene pom.xml)
-    - name: Check if Java project (pom.xml exists)
-      id: check_java
+    - name: Generate unique image tag
+      id: tag
       run: |
-        if [ -f "./${{ matrix.service }}/pom.xml" ]; then
-          echo "is_java=true" >> $GITHUB_OUTPUT
-          echo "✅ ${{ matrix.service }} is a Java project"
-        else
-          echo "is_java=false" >> $GITHUB_OUTPUT
-          echo "📦 ${{ matrix.service }} is not a Java project"
-        fi
+        # Usa branch + short SHA para desarrollo
+        BRANCH=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '-')
+        TAG=dev-${BRANCH}-${GITHUB_SHA::8}
+        echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+        echo "📦 Generated tag: $TAG"
 
-    # 👉 Configurar JDK 8 solo para proyectos Java
+    # Set up JDK 8 for Java projects
     - name: Set up JDK 8
-      if: steps.check_java.outputs.is_java == 'true'
       uses: actions/setup-java@v3
       with:
         java-version: '8'
         distribution: 'temurin'
 
-    # 👉 Compilar con Maven solo para proyectos Java
-    - name: Build with Maven
-      if: steps.check_java.outputs.is_java == 'true'
-      run: mvn clean package -DskipTests
-      working-directory: ./${{ matrix.service }}
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('users-api/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
 
-    # 👉 Construir imagen Docker
-    - name: Build ${{ matrix.service }} Docker image
+    # Build users-api (Java/Spring Boot)
+    - name: Build users-api
       run: |
-        docker build -t ${{ matrix.service }}:latest ./${{ matrix.service }}
-      working-directory: ./
-      
-    # 👉 Test Docker image (opcional, mejorable)
-    - name: Test Docker image
+        cd ./users-api
+        mvn clean package -DskipTests
+        cd ..
+        docker build -t users-api:${{ steps.tag.outputs.image_tag }} ./users-api
+
+    # Build auth-api (Go)
+    - name: Build auth-api
       run: |
-        # Para Java, no tiene sentido --version, así que solo verificamos que la imagen existe
-        docker run --rm ${{ matrix.service }}:latest echo "Service built successfully" || echo "Container test failed"
+        docker build -t auth-api:${{ steps.tag.outputs.image_tag }} ./auth-api
+
+    # Build todos-api (Node.js)
+    - name: Build todos-api
+      run: |
+        docker build -t todos-api:${{ steps.tag.outputs.image_tag }} ./todos-api
+
+    # Build frontend (Vue.js) - using pre-built folder
+    - name: Build frontend
+      run: |
+        echo "⚠️ Using pre-built 'build' folder from repo"
+        if [ ! -d "frontend/build" ]; then
+          echo "❌ Pre-built folder 'build' not found in ./frontend/"
+          ls -la frontend/
+          exit 1
+        fi
+        docker build -t frontend:${{ steps.tag.outputs.image_tag }} ./frontend
+
+    # Build log-message-processor (Python)
+    - name: Build log-message-processor
+      run: |
+        docker build -t log-message-processor:${{ steps.tag.outputs.image_tag }} ./log-message-processor
+
+    
+    - name: Test Docker images (basic smoke test)
+      run: |
+        TAG=${{ steps.tag.outputs.image_tag }}
+        echo "🧪 Testing image: users-api:$TAG"
+        docker run --rm --entrypoint=echo users-api:$TAG "✅ Built successfully" || exit 1
+
+        echo "🧪 Testing image: auth-api:$TAG"
+        docker run --rm --entrypoint=echo auth-api:$TAG "✅ Built successfully" || exit 1
+
+        echo "🧪 Testing image: todos-api:$TAG"
+        docker run --rm --entrypoint=echo todos-api:$TAG "✅ Built successfully" || exit 1
+
+        echo "🧪 Testing image: frontend:$TAG"
+        docker run --rm --entrypoint=echo frontend:$TAG "✅ Built successfully" || exit 1
+
+        echo "🧪 Testing image: log-message-processor:$TAG"
+        docker run --rm --entrypoint=echo log-message-processor:$TAG "✅ Built successfully" || exit 1
+
+  # Job para notificaciones
+  notify-build:
+    name: Notify Build
+    runs-on: ubuntu-latest
+    needs: [code-quality, build-services]
+    if: always()
+    
+    steps:
+    - name: Notify Success
+      if: always()
+      run: |
+        TAG=${{ needs.build-services.outputs.image_tag }}
+        echo "✅ Development build completed!"
+        echo "📦 Images built locally with tag: $TAG"
+        echo "🔗 users-api:$TAG"
+        echo "🔗 auth-api:$TAG"
+        echo "🔗 todos-api:$TAG"
+        echo "🔗 frontend:$TAG"
+        echo "🔗 log-message-processor:$TAG"
+        
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "📝 This was triggered by PR #${{ github.event.pull_request.number }}"
+        fi
