@@ -1,6 +1,12 @@
 # Ignore Maven build output (except the final JAR)
 
-
+/target/classes
+/target/generated-sources
+/target/generated-test-sources
+/target/maven-archiver
+/target/maven-status
+/target/surefire-reports
+/target/test-classes
 
 ## Ignore Git files
 
@@ -11,7 +17,7 @@
 
 *.iml
 .idea/
-.vscode/
+.vscode/56
 
 ## Ignore OS files
 
@@ -28,4 +34,4 @@ Thumbs.db
 
 ## Allow the final JAR file we need
 
-!target/users-service.jar
+!target/*.jar
