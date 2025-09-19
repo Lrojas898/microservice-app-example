@@ -86,7 +86,6 @@ jobs:
         TAG=gh-${GITHUB_SHA::8}
         echo "image_tag=$TAG" >> $GITHUB_OUTPUT
 
-    # 👉 Solución definitiva: usar build/ preexistente (omite npm build, solo verifica carpeta)
     - name: Use pre-built frontend (skip build)
       if: matrix.service == 'frontend'
       run: |
@@ -167,7 +166,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    # 👉 CORREGIDO: Quitado subscriptionId de creds
     - name: Azure Login
       uses: azure/login@v1
       with:
@@ -185,11 +183,15 @@ jobs:
         terraform_version: 1.5.7
         
     - name: Terraform Init
-      run: terraform init
+      run: |
+        echo "🔑 Initializing Terraform with remote backend..."
+        terraform init -upgrade
       working-directory: ./terraform
       
     - name: Terraform Plan
+      id: plan
       run: |
+        echo "📋 Generating execution plan..."
         terraform plan \
           -var="location=centralus" \
           -var="resource_group_location=centralus" \
@@ -202,12 +204,22 @@ jobs:
           -var="log_processor_image=${{ needs.build-production-images.outputs.log_processor_image }}" \
           -out=tfplan
       working-directory: ./terraform
-      
-    - name: Terraform Apply
-      run: terraform apply -input=false -auto-approve tfplan
+
+    - name: Show Plan (for review)
+      run: |
+        echo "🔍 PLAN PREVIEW:"
+        terraform show tfplan
       working-directory: ./terraform
-      
+
+    - name: Terraform Apply
+      if: steps.plan.outcome == 'success' && github.ref == 'refs/heads/master'
+      run: |
+        echo "🚀 Applying infrastructure changes..."
+        terraform apply -input=false -auto-approve tfplan
+      working-directory: ./terraform
+
     - name: Cleanup
+      if: always()
       run: rm -f tfplan
       working-directory: ./terraform
 
