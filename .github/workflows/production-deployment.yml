@@ -93,8 +93,12 @@ jobs:
       if: matrix.service == 'frontend'
       run: |
         echo "📦 Building frontend..."
-        npm install --legacy-peer-deps
-        npm run build
+        CI=true npm install --legacy-peer-deps --no-progress --no-audit --no-fund --ignore-scripts
+        echo "✅ Dependencies installed"
+        CI=true npm run build -- --no-progress --display minimal
+        echo "✅ Build completed. Verifying output..."
+        ls -la build/
+        test -f build/index.html
       working-directory: ./frontend
       env:
         CI: true
