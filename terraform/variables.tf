@@ -145,12 +145,6 @@ variable "log_processor_image" {
   default     = "osgomez/log-message-processor:latest"
 }
 
-# Variable para Azure Subscription ID (para CI/CD)
-variable "subscriptionId" {
-  description = "Azure Subscription ID"
-  type        = string
-  default     = null
-}
 
 variable "client_id" {
   description = "Azure Service Principal Client ID"
