@@ -4,10 +4,9 @@ on:
   push:
     branches: [ develop, dev, feature/* ]
   pull_request:
-    branches: [ develop, dev ]
+    branches: [ develop, dev, master ]  # 👈 Añadimos master aquí para detectar PRs hacia master
 
 env:
-  # Solo necesitamos DOCKERHUB_USERNAME si vamos a hacer push (opcional)
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
@@ -40,11 +39,44 @@ jobs:
       run: terraform validate
       working-directory: ./terraform
 
+  # Job para validar que PR hacia master tenga solo 1 commit (nuevo)
+  validate-pr-single-commit:
+    name: Validate PR has Single Commit
+    runs-on: ubuntu-latest
+    # Solo se ejecuta si es un PR hacia master
+    if: github.event_name == 'pull_request' && github.base_ref == 'master'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Necesario para ver todo el historial
+
+    - name: Get PR commit count
+      id: commit_count
+      run: |
+        # Cuenta los commits en el PR (desde la base hasta la cabeza)
+        COUNT=$(git rev-list --count ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+        echo "commit_count=$COUNT" >> $GITHUB_OUTPUT
+        echo "🔍 PR has $COUNT commits"
+
+    - name: Fail if more than 1 commit
+      if: steps.commit_count.outputs.commit_count != '1'
+      run: |
+        echo "❌ ERROR: Pull Request towards 'master' must have exactly 1 commit."
+        echo "💡 Tip: Use 'git rebase -i' to squash your commits into one."
+        exit 1
+
+    - name: Success message
+      if: steps.commit_count.outputs.commit_count == '1'
+      run: |
+        echo "✅ PR has exactly 1 commit. Ready for review!"
+
   # Job para construir imágenes Docker para desarrollo
   build-services:
     name: Build Services
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Solo necesita code-quality, no validate-pr-single-commit (puede correr en paralelo)
     needs: code-quality
     outputs:
       image_tag: ${{ steps.tag.outputs.image_tag }}
@@ -59,7 +91,6 @@ jobs:
     - name: Generate unique image tag
       id: tag
       run: |
-        # Usa branch + short SHA para desarrollo
         BRANCH=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '-')
         TAG=dev-${BRANCH}-${GITHUB_SHA::8}
         echo "image_tag=$TAG" >> $GITHUB_OUTPUT
@@ -114,7 +145,6 @@ jobs:
       run: |
         docker build -t log-message-processor:${{ steps.tag.outputs.image_tag }} ./log-message-processor
 
-    
     - name: Test Docker images (basic smoke test)
       run: |
         TAG=${{ steps.tag.outputs.image_tag }}
@@ -137,6 +167,7 @@ jobs:
   notify-build:
     name: Notify Build
     runs-on: ubuntu-latest
+    # Si validate-pr-single-commit falla, este job no se ejecutará (porque build-services necesita code-quality, pero no depende del nuevo job)
     needs: [code-quality, build-services]
     if: always()
     
