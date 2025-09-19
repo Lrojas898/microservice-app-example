@@ -93,7 +93,7 @@ jobs:
       if: matrix.service == 'frontend'
       run: |
         echo "📦 Building frontend..."
-        npm ci --legacy-peer-deps
+        npm install --legacy-peer-deps
         npm run build
       working-directory: ./frontend
       env:
