@@ -13,7 +13,6 @@ resource "azurerm_container_group" "auth" {
     cpu    = "1"
     memory = "1.5"
 
-    # ¡CORRECCIÓN IMPORTANTE! Usa el bloque "ports" en lugar de "port"
     ports {
       port     = 8000
       protocol = "TCP"
@@ -29,6 +28,13 @@ resource "azurerm_container_group" "auth" {
       REDIS_PORT     = "6380"
       REDIS_PASSWORD = module.security.redis_cache_primary_key
     }
+  }
+
+  # 👇👇👇 ESTO ES LO QUE FALTABA 👇👇👇
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
   }
 
   depends_on = [
@@ -52,7 +58,6 @@ resource "azurerm_container_group" "users" {
     cpu    = "1"
     memory = "1.5"
 
-    # ¡CORRECCIÓN IMPORTANTE! Usa el bloque "ports" en lugar de "port"
     ports {
       port     = 8083
       protocol = "TCP"
@@ -67,6 +72,13 @@ resource "azurerm_container_group" "users" {
       SPRING_REDIS_PORT          = "6380"
       SPRING_REDIS_PASSWORD      = module.security.redis_cache_primary_key
     }
+  }
+
+  # 👇👇👇 ESTO ES LO QUE FALTABA 👇👇👇
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
   }
 
   depends_on = [
@@ -90,7 +102,6 @@ resource "azurerm_container_group" "todos" {
     cpu    = "1"
     memory = "1.5"
 
-    # ¡CORRECCIÓN IMPORTANTE! Usa el bloque "ports" en lugar de "port"
     ports {
       port     = 8082
       protocol = "TCP"
@@ -106,6 +117,13 @@ resource "azurerm_container_group" "todos" {
       REDIS_PORT     = "6380"
       REDIS_PASSWORD = module.security.redis_cache_primary_key
     }
+  }
+
+  # 👇👇👇 ESTO ES LO QUE FALTABA 👇👇👇
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
   }
 
   depends_on = [
@@ -138,6 +156,13 @@ resource "azurerm_container_group" "frontend" {
       AUTH_API_ADDRESS  = "http://${azurerm_container_group.auth.ip_address}:8000"
       TODOS_API_ADDRESS = "http://${azurerm_container_group.todos.ip_address}:8082"
     }
+  }
+
+  # 👇👇👇 ESTO ES LO QUE FALTABA 👇👇👇
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
   }
 
   depends_on = [
