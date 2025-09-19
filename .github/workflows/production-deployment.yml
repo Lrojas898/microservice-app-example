@@ -217,6 +217,8 @@ jobs:
           -var="client_id=${{ env.AZURE_CLIENT_ID }}" \
           -var="client_secret=${{ env.AZURE_CLIENT_SECRET }}" \
           -var="tenant_id=${{ env.AZURE_TENANT_ID }}" \
+          -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
+          -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
           -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-api:${TAG}" \
           -var="auth_api_image=${{ secrets.DOCKERHUB_USERNAME }}/auth-api:${TAG}" \
           -var="todos_api_image=${{ secrets.DOCKERHUB_USERNAME }}/todos-api:${TAG}" \
