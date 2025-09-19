@@ -20,7 +20,7 @@ env:
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}  # Asegúrate de definir este secreto en GitHub
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
   # Job para validar código antes del despliegue
@@ -74,19 +74,19 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
+    # 👉 LOGIN A DOCKER HUB CON TUS SECRETS
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
       with:
-        username: ${{ env.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}  # Crea este secreto en GitHub
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    # Generar tag único basado en commit SHA
+    # Generar tag único basado en commit SHA (evitar :latest)
     - name: Generate unique image tag
       id: tag
       run: |
         TAG=gh-${GITHUB_SHA::8}
         echo "image_tag=$TAG" >> $GITHUB_OUTPUT
-        echo "Using tag: $TAG"
 
     # Construir frontend (React/Vue/etc) - genera carpeta 'build/'
     - name: Build frontend app
@@ -99,7 +99,7 @@ jobs:
       env:
         CI: true
 
-    # Verificar si es proyecto Java (tiene pom.xml)
+    # Verificar si es proyecto Java (tiene pom.xml) — solo users-api debería tenerlo
     - name: Check if Java project (pom.xml exists)
       id: check_java
       run: |
@@ -135,34 +135,30 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    # Construir, taggear y subir imagen Docker
+    # Construir, taggear y subir imagen Docker a Docker Hub
     - name: Build, tag, and push Docker image
-      id: build_push
+      id: push
       run: |
         IMAGE_NAME="${{ matrix.service }}"
         IMAGE_TAG="${{ steps.tag.outputs.image_tag }}"
-        FULL_IMAGE="${{ env.DOCKERHUB_USERNAME }}/${IMAGE_NAME}:${IMAGE_TAG}"
+        FULL_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${IMAGE_NAME}:${IMAGE_TAG}"
         
-        echo "🏗️ Building image: $FULL_IMAGE"
+        echo "🏗️ Building and pushing: $FULL_IMAGE"
         docker build -t $FULL_IMAGE ./${{ matrix.service }}
-        
-        echo "⬆️ Pushing image to Docker Hub..."
         docker push $FULL_IMAGE
         
-        # Guardar para output del job
-        echo "image=${FULL_IMAGE}" >> $GITHUB_OUTPUT
-        echo "${IMAGE_NAME}_image=${FULL_IMAGE}" >> $GITHUB_ENV
+        # Guardar como output para usar en Terraform
+        echo "${IMAGE_NAME}_image=$FULL_IMAGE" >> $GITHUB_OUTPUT
 
-    # Exportar outputs para el job de Terraform
+    # Exportar todos los tags para el job de Terraform
     - name: Export image tags for Terraform
       id: export
-      if: always()
       run: |
-        echo "users_api_image=${{ env.users_api_image || 'not-built' }}" >> $GITHUB_OUTPUT
-        echo "auth_api_image=${{ env.auth_api_image || 'not-built' }}" >> $GITHUB_OUTPUT
-        echo "todos_api_image=${{ env.todos_api_image || 'not-built' }}" >> $GITHUB_OUTPUT
-        echo "frontend_image=${{ env.frontend_image || 'not-built' }}" >> $GITHUB_OUTPUT
-        echo "log_processor_image=${{ env.log_processor_image || 'not-built' }}" >> $GITHUB_OUTPUT
+        echo "users_api_image=${{ steps.push.outputs.users_api_image || 'not-built' }}" >> $GITHUB_OUTPUT
+        echo "auth_api_image=${{ steps.push.outputs.auth_api_image || 'not-built' }}" >> $GITHUB_OUTPUT
+        echo "todos_api_image=${{ steps.push.outputs.todos_api_image || 'not-built' }}" >> $GITHUB_OUTPUT
+        echo "frontend_image=${{ steps.push.outputs.frontend_image || 'not-built' }}" >> $GITHUB_OUTPUT
+        echo "log_processor_image=${{ steps.push.outputs.log_processor_image || 'not-built' }}" >> $GITHUB_OUTPUT
 
   # Job para desplegar infraestructura de producción
   deploy-infrastructure:
