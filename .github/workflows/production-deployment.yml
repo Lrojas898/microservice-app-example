@@ -20,6 +20,7 @@ env:
   AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}  # Asegúrate de definir este secreto en GitHub
 
 jobs:
   # Job para validar código antes del despliegue
@@ -55,7 +56,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: pre-deployment-checks
-    
+    outputs:
+      users_api_image: ${{ steps.export.outputs.users_api_image }}
+      auth_api_image: ${{ steps.export.outputs.auth_api_image }}
+      todos_api_image: ${{ steps.export.outputs.todos_api_image }}
+      frontend_image: ${{ steps.export.outputs.frontend_image }}
+      log_processor_image: ${{ steps.export.outputs.log_processor_image }}
+
     strategy:
       matrix:
         service: [auth-api, users-api, todos-api, frontend, log-message-processor]
@@ -67,21 +74,60 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    # Solo compilar con Maven si es un servicio Java (basado en presencia de pom.xml)
-    - name: Set up JDK 8 and Build with Maven (if applicable)
-      if: contains(matrix.service, 'api') && !contains(matrix.service, 'frontend') && !contains(matrix.service, 'processor')
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ env.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}  # Crea este secreto en GitHub
+
+    # Generar tag único basado en commit SHA
+    - name: Generate unique image tag
+      id: tag
+      run: |
+        TAG=gh-${GITHUB_SHA::8}
+        echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+        echo "Using tag: $TAG"
+
+    # Construir frontend (React/Vue/etc) - genera carpeta 'build/'
+    - name: Build frontend app
+      if: matrix.service == 'frontend'
+      run: |
+        echo "📦 Building frontend..."
+        npm ci
+        npm run build
+      working-directory: ./frontend
+      env:
+        CI: true
+
+    # Verificar si es proyecto Java (tiene pom.xml)
+    - name: Check if Java project (pom.xml exists)
+      id: check_java
+      run: |
+        if [ -f "./${{ matrix.service }}/pom.xml" ]; then
+          echo "is_java=true" >> $GITHUB_OUTPUT
+          echo "✅ ${{ matrix.service }} is a Java project"
+        else
+          echo "is_java=false" >> $GITHUB_OUTPUT
+          echo "📦 ${{ matrix.service }} is not a Java project"
+        fi
+
+    # Configurar JDK 8 solo para proyectos Java
+    - name: Set up JDK 8
+      if: steps.check_java.outputs.is_java == 'true'
       uses: actions/setup-java@v3
       with:
         java-version: '8'
         distribution: 'temurin'
 
-    - name: Build with Maven (if applicable)
-      if: contains(matrix.service, 'api') && !contains(matrix.service, 'frontend') && !contains(matrix.service, 'processor')
+    # Compilar con Maven solo para proyectos Java
+    - name: Build with Maven
+      if: steps.check_java.outputs.is_java == 'true'
       run: mvn clean package -DskipTests
       working-directory: ./${{ matrix.service }}
 
-    - name: Cache Maven dependencies (optional, improves speed)
-      if: contains(matrix.service, 'api') && !contains(matrix.service, 'frontend') && !contains(matrix.service, 'processor')
+    # Cache de dependencias Maven (mejora velocidad)
+    - name: Cache Maven dependencies
+      if: steps.check_java.outputs.is_java == 'true'
       uses: actions/cache@v3
       with:
         path: ~/.m2/repository
@@ -89,10 +135,34 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    - name: Build ${{ matrix.service }} Docker image
+    # Construir, taggear y subir imagen Docker
+    - name: Build, tag, and push Docker image
+      id: build_push
       run: |
-        docker build -t ${{ matrix.service }}:latest ./${{ matrix.service }}
-      working-directory: ./
+        IMAGE_NAME="${{ matrix.service }}"
+        IMAGE_TAG="${{ steps.tag.outputs.image_tag }}"
+        FULL_IMAGE="${{ env.DOCKERHUB_USERNAME }}/${IMAGE_NAME}:${IMAGE_TAG}"
+        
+        echo "🏗️ Building image: $FULL_IMAGE"
+        docker build -t $FULL_IMAGE ./${{ matrix.service }}
+        
+        echo "⬆️ Pushing image to Docker Hub..."
+        docker push $FULL_IMAGE
+        
+        # Guardar para output del job
+        echo "image=${FULL_IMAGE}" >> $GITHUB_OUTPUT
+        echo "${IMAGE_NAME}_image=${FULL_IMAGE}" >> $GITHUB_ENV
+
+    # Exportar outputs para el job de Terraform
+    - name: Export image tags for Terraform
+      id: export
+      if: always()
+      run: |
+        echo "users_api_image=${{ env.users_api_image || 'not-built' }}" >> $GITHUB_OUTPUT
+        echo "auth_api_image=${{ env.auth_api_image || 'not-built' }}" >> $GITHUB_OUTPUT
+        echo "todos_api_image=${{ env.todos_api_image || 'not-built' }}" >> $GITHUB_OUTPUT
+        echo "frontend_image=${{ env.frontend_image || 'not-built' }}" >> $GITHUB_OUTPUT
+        echo "log_processor_image=${{ env.log_processor_image || 'not-built' }}" >> $GITHUB_OUTPUT
 
   # Job para desplegar infraestructura de producción
   deploy-infrastructure:
@@ -127,7 +197,17 @@ jobs:
       working-directory: ./terraform
       
     - name: Terraform Plan
-      run: terraform plan -var="location=centralus" -var="resource_group_location=centralus" -var="db_location=centralus" -out=tfplan
+      run: |
+        terraform plan \
+          -var="location=centralus" \
+          -var="resource_group_location=centralus" \
+          -var="db_location=centralus" \
+          -var="users_api_image=${{ needs.build-production-images.outputs.users_api_image }}" \
+          -var="auth_api_image=${{ needs.build-production-images.outputs.auth_api_image }}" \
+          -var="todos_api_image=${{ needs.build-production-images.outputs.todos_api_image }}" \
+          -var="frontend_image=${{ needs.build-production-images.outputs.frontend_image }}" \
+          -var="log_processor_image=${{ needs.build-production-images.outputs.log_processor_image }}" \
+          -out=tfplan
       working-directory: ./terraform
       
     - name: Terraform Apply
@@ -151,6 +231,9 @@ jobs:
       run: |
         echo "✅ Production deployment completed successfully!"
         echo "🚀 Services are now running in production"
+        echo "🔗 Users API: ${{ needs.build-production-images.outputs.users_api_image }}"
+        echo "🔗 Todos API: ${{ needs.build-production-images.outputs.todos_api_image }}"
+        echo "🔗 Frontend: ${{ needs.build-production-images.outputs.frontend_image }}"
         
     - name: Notify Failure
       if: needs.deploy-infrastructure.result == 'failure'
