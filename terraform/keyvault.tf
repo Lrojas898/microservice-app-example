@@ -27,15 +27,15 @@ resource "azurerm_key_vault_access_policy" "current" {
 
   secret_permissions = [
     "Get",
-    "List", 
+    "List",
     "Set",
     "Delete",
     "Backup",
-    "Restore", 
+    "Restore",
     "Recover",
     "Purge"
   ]
-  
+
   key_permissions = [
     "Get",
     "List",
@@ -47,11 +47,11 @@ resource "azurerm_key_vault_access_policy" "current" {
     "Restore",
     "Recover"
   ]
-  
+
   certificate_permissions = [
     "Get",
     "List",
-    "Create", 
+    "Create",
     "Delete",
     "Update",
     "Import",
@@ -67,7 +67,7 @@ resource "azurerm_key_vault_secret" "postgres_auth_password" {
   name         = "postgres-auth-password"
   value        = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
   key_vault_id = azurerm_key_vault.main.id
-  
+
   depends_on = [azurerm_key_vault_access_policy.current]
 }
 
@@ -75,7 +75,7 @@ resource "azurerm_key_vault_secret" "postgres_users_password" {
   name         = "postgres-users-password"
   value        = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
   key_vault_id = azurerm_key_vault.main.id
-  
+
   depends_on = [azurerm_key_vault_access_policy.current]
 }
 
@@ -83,6 +83,6 @@ resource "azurerm_key_vault_secret" "postgres_todos_password" {
   name         = "postgres-todos-password"
   value        = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
   key_vault_id = azurerm_key_vault.main.id
-  
+
   depends_on = [azurerm_key_vault_access_policy.current]
 }
