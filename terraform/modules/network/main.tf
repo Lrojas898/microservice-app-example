@@ -6,7 +6,7 @@ resource "azurerm_virtual_network" "main" {
   resource_group_name = var.resource_group_name
 }
 
-# Subnet para Auth Service
+# Subnet para Auth Microservice
 resource "azurerm_subnet" "auth" {
   name                 = "auth-db-subnet"
   resource_group_name  = var.resource_group_name
