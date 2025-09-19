@@ -4,8 +4,8 @@ FROM openjdk:8-jdk-slim
 # Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar el JAR real construido por Maven/Gradle
-COPY target/users-service.jar users-service.jar
+# Copiar el JAR generado por Maven (usa patrón genérico)
+COPY target/*.jar users-service.jar
 
 # Exponer puerto 8083
 EXPOSE 8083
