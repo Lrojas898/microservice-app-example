@@ -88,20 +88,29 @@ jobs:
         TAG=gh-${GITHUB_SHA::8}
         echo "image_tag=$TAG" >> $GITHUB_OUTPUT
 
-    # Construir frontend (React/Vue/etc) - genera carpeta 'build/'
+    # 👉 Construir frontend (solución definitiva para evitar que se quede pegado)
     - name: Build frontend app
       if: matrix.service == 'frontend'
       run: |
-        echo "📦 Building frontend..."
-        CI=true npm install --legacy-peer-deps --no-progress --no-audit --no-fund --ignore-scripts
+        echo "📦 Installing dependencies..."
+        CI=true npm install --legacy-peer-deps --no-progress --no-audit --no-fund --ignore-scripts > /dev/null 2>&1
         echo "✅ Dependencies installed"
-        CI=true npm run build -- --no-progress --display minimal
-        echo "✅ Build completed. Verifying output..."
+        echo "🏗️ Building frontend..."
+        CI=true npm run build -- --no-progress --display minimal > /dev/null 2>&1
+        echo "✅ Build completed silently"
+        if [ ! -d "build" ] || [ ! -f "build/index.html" ]; then
+          echo "❌ Build failed: build folder or index.html not found"
+          exit 1
+        fi
+        echo "📁 Build folder contents:"
         ls -la build/
-        test -f build/index.html
+        echo "✅ FRONTEND BUILD SUCCESS — forcing exit"
+        exit 0
       working-directory: ./frontend
       env:
         CI: true
+        NODE_OPTIONS: --max_old_space_size=4096
+      timeout-minutes: 5
 
     # Verificar si es proyecto Java (tiene pom.xml) — solo users-api debería tenerlo
     - name: Check if Java project (pom.xml exists)
