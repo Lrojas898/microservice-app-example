@@ -22,3 +22,13 @@ key_vault_name = "microservice-kv"
 # postgres_auth_password = "tu_contraseña_auth"
 # postgres_users_password = "tu_contraseña_users"
 # postgres_todos_password = "tu_contraseña_todos"
+
+# Variables para imágenes Docker (opcional - para CI/CD)
+# auth_api_image = "tu-usuario/auth-service:latest"
+# users_api_image = "tu-usuario/users-service:latest"
+# todos_api_image = "tu-usuario/todos-service:latest"
+# frontend_image = "tu-usuario/frontend:latest"
+# log_processor_image = "tu-usuario/log-message-processor:latest"
+
+# Variable para Azure Subscription ID (opcional - para CI/CD)
+# subscriptionId = "tu-subscription-id"

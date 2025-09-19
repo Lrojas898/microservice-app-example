@@ -9,7 +9,7 @@ resource "azurerm_container_group" "auth" {
 
   container {
     name   = "auth-container"
-    image  = "osgomez/auth-service:latest"
+    image  = var.auth_api_image
     cpu    = "1"
     memory = "1.5"
 
@@ -48,7 +48,7 @@ resource "azurerm_container_group" "users" {
 
   container {
     name   = "users-container"
-    image  = "osgomez/users-service:latest"
+    image  = var.users_api_image
     cpu    = "1"
     memory = "1.5"
 
@@ -86,7 +86,7 @@ resource "azurerm_container_group" "todos" {
 
   container {
     name   = "todos-container"
-    image  = "osgomez/todos-service:latest"
+    image  = var.todos_api_image
     cpu    = "1"
     memory = "1.5"
 
@@ -125,7 +125,7 @@ resource "azurerm_container_group" "frontend" {
 
   container {
     name   = "frontend-container"
-    image  = "osgomez/frontend:latest"
+    image  = var.frontend_image
     cpu    = "1"
     memory = "1.5"
 

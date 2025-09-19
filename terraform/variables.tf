@@ -113,3 +113,41 @@ variable "key_vault_name" {
   type        = string
   default     = "microservice-kv"
 }
+
+# Variables para imágenes Docker (para CI/CD)
+variable "auth_api_image" {
+  description = "Docker image for Auth API service"
+  type        = string
+  default     = "osgomez/auth-service:latest"
+}
+
+variable "users_api_image" {
+  description = "Docker image for Users API service"
+  type        = string
+  default     = "osgomez/users-service:latest"
+}
+
+variable "todos_api_image" {
+  description = "Docker image for Todos API service"
+  type        = string
+  default     = "osgomez/todos-service:latest"
+}
+
+variable "frontend_image" {
+  description = "Docker image for Frontend service"
+  type        = string
+  default     = "osgomez/frontend:latest"
+}
+
+variable "log_processor_image" {
+  description = "Docker image for Log Processor service"
+  type        = string
+  default     = "osgomez/log-message-processor:latest"
+}
+
+# Variable para Azure Subscription ID (para CI/CD)
+variable "subscriptionId" {
+  description = "Azure Subscription ID"
+  type        = string
+  default     = null
+}
