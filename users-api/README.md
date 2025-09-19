@@ -5,7 +5,7 @@ PRUEBA CAMBIO TEST
 - `GET /users/:username` - get a user by name
 
 ## Configuration
-
+PRUEBA CON DOS COMMITS
 The service scans environment for variables:
 - `JWT_SECRET` - secret value for JWT token processing. Must be the same amongst all components.
 - `SERVER_PORT` - the port the service takes.
