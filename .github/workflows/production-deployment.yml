@@ -21,9 +21,13 @@ env:
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  # Variables de entorno para Terraform con backend azurerm
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
 jobs:
-  # Job para validar código antes del despliegue
   # Job para validar código antes del despliegue
   pre-deployment-checks:
     name: Pre-deployment Checks
@@ -57,14 +61,22 @@ jobs:
     - name: Terraform Init
       run: |
         echo "🔑 Initializing Terraform with remote backend for validation..."
-        terraform init \
-          -backend-config="storage_account_key=${{ secrets.TF_STATE_STORAGE_ACCOUNT_KEY }}" \
-          -upgrade
+        terraform init -upgrade
       working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       
     - name: Terraform Validate
       run: terraform validate
       working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
   # Job para construir imágenes Docker para producción
   build-production-images:
@@ -201,10 +213,13 @@ jobs:
     - name: Terraform Init
       run: |
         echo "🔑 Initializing Terraform with remote backend..."
-        terraform init \
-          -backend-config="storage_account_key=${{ secrets.TF_STATE_STORAGE_ACCOUNT_KEY }}" \
-          -upgrade
+        terraform init -upgrade
       working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       
     - name: Terraform Plan
       id: plan
@@ -225,12 +240,22 @@ jobs:
           -var="log_processor_image=${{ needs.build-production-images.outputs.log_processor_image }}" \
           -out=tfplan
       working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     - name: Show Plan (for review)
       run: |
         echo "🔍 PLAN PREVIEW:"
         terraform show tfplan
       working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     - name: Terraform Apply
       if: steps.plan.outcome == 'success' && github.ref == 'refs/heads/master'
@@ -238,6 +263,11 @@ jobs:
         echo "🚀 Applying infrastructure changes..."
         terraform apply -input=false -auto-approve tfplan
       working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     - name: Cleanup
       if: always()
