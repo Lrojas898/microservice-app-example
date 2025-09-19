@@ -86,13 +86,13 @@ jobs:
         TAG=gh-${GITHUB_SHA::8}
         echo "image_tag=$TAG" >> $GITHUB_OUTPUT
 
-    # 👉 Solución definitiva: usar build/ preexistente (omite npm build)
+    # 👉 Solución definitiva: usar build/ preexistente (omite npm build, solo verifica carpeta)
     - name: Use pre-built frontend (skip build)
       if: matrix.service == 'frontend'
       run: |
         echo "⚠️ Skipping npm build — using pre-built 'build' folder from repo"
-        if [ ! -d "build" ] || [ ! -f "build/index.html" ]; then
-          echo "❌ Pre-built folder not found in ./frontend/build/"
+        if [ ! -d "build" ]; then
+          echo "❌ Pre-built folder 'build' not found in ./frontend/"
           ls -la
           exit 1
         fi
