@@ -1,5 +1,5 @@
 # TODOs API
-
+TESTS
 This service is written in NodeJS, it provides CRUD operations over TODO entries.
 It keeps all the data in memory. CREATE and DELETE operations are logged by
 sending appropriate message to a Redis queue. The messages are then processed by
