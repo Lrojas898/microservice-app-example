@@ -7,13 +7,18 @@ resource "azurerm_container_group" "auth" {
   os_type             = "Linux"
   subnet_ids          = [module.network.auth_container_subnet_id]
 
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
+  }
+
   container {
     name   = "auth-container"
     image  = var.auth_api_image
     cpu    = "1"
     memory = "1.5"
 
-    # ¡CORRECCIÓN IMPORTANTE! Usa el bloque "ports" en lugar de "port"
     ports {
       port     = 8000
       protocol = "TCP"
@@ -46,13 +51,18 @@ resource "azurerm_container_group" "users" {
   os_type             = "Linux"
   subnet_ids          = [module.network.users_container_subnet_id]
 
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
+  }
+
   container {
     name   = "users-container"
     image  = var.users_api_image
     cpu    = "1"
     memory = "1.5"
 
-    # ¡CORRECCIÓN IMPORTANTE! Usa el bloque "ports" en lugar de "port"
     ports {
       port     = 8083
       protocol = "TCP"
@@ -84,13 +94,18 @@ resource "azurerm_container_group" "todos" {
   os_type             = "Linux"
   subnet_ids          = [module.network.todos_container_subnet_id]
 
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
+  }
+
   container {
     name   = "todos-container"
     image  = var.todos_api_image
     cpu    = "1"
     memory = "1.5"
 
-    # ¡CORRECCIÓN IMPORTANTE! Usa el bloque "ports" en lugar de "port"
     ports {
       port     = 8082
       protocol = "TCP"
@@ -123,6 +138,12 @@ resource "azurerm_container_group" "frontend" {
   dns_name_label      = "microservice-frontend-${random_string.unique.result}"
   os_type             = "Linux"
 
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
+  }
+
   container {
     name   = "frontend-container"
     image  = var.frontend_image
@@ -144,6 +165,40 @@ resource "azurerm_container_group" "frontend" {
     module.network,
     azurerm_container_group.auth,
     azurerm_container_group.todos
+  ]
+}
+
+# Log Message Processor Service en Azure Container Instance
+resource "azurerm_container_group" "log_processor" {
+  name                = "log-processor-service"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  ip_address_type     = "Private"
+  os_type             = "Linux"
+  subnet_ids          = [module.network.log_processor_container_subnet_id]
+
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
+  }
+
+  container {
+    name   = "log-processor-container"
+    image  = var.log_processor_image
+    cpu    = "0.5"
+    memory = "1"
+
+    environment_variables = {
+      REDIS_HOST     = module.security.redis_cache_hostname
+      REDIS_PORT     = "6380"
+      REDIS_PASSWORD = module.security.redis_cache_primary_key
+    }
+  }
+
+  depends_on = [
+    module.network,
+    module.security
   ]
 }
 
