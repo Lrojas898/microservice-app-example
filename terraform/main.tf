@@ -1,7 +1,3 @@
-# Configuración del proveedor Azure
-provider "azurerm" {
-  features {}
-}
 
 # Grupo de recursos principal
 resource "azurerm_resource_group" "main" {
