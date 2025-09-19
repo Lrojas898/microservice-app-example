@@ -172,7 +172,7 @@ resource "azurerm_container_group" "frontend" {
   ]
 }
 
-# Random string for unique naming
+# Random strings for unique naming
 resource "random_string" "unique" {
   length  = 8
   special = false
