@@ -24,6 +24,7 @@ env:
 
 jobs:
   # Job para validar código antes del despliegue
+  # Job para validar código antes del despliegue
   pre-deployment-checks:
     name: Pre-deployment Checks
     runs-on: ubuntu-latest
@@ -33,6 +34,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: |
+          {
+            "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+            "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
+            "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          }
+          
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
@@ -43,7 +55,11 @@ jobs:
       working-directory: ./terraform
       
     - name: Terraform Init
-      run: terraform init
+      run: |
+        echo "🔑 Initializing Terraform with remote backend for validation..."
+        terraform init \
+          -backend-config="storage_account_key=${{ secrets.TF_STATE_STORAGE_ACCOUNT_KEY }}" \
+          -upgrade
       working-directory: ./terraform
       
     - name: Terraform Validate
