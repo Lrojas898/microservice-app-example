@@ -63,10 +63,32 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      
+
+    # Solo compilar con Maven si es un servicio Java (basado en presencia de pom.xml)
+    - name: Set up JDK 8 and Build with Maven (if applicable)
+      if: contains(matrix.service, 'api') && !contains(matrix.service, 'frontend') && !contains(matrix.service, 'processor')
+      uses: actions/setup-java@v3
+      with:
+        java-version: '8'
+        distribution: 'temurin'
+
+    - name: Build with Maven (if applicable)
+      if: contains(matrix.service, 'api') && !contains(matrix.service, 'frontend') && !contains(matrix.service, 'processor')
+      run: mvn clean package -DskipTests
+      working-directory: ./${{ matrix.service }}
+
+    - name: Cache Maven dependencies (optional, improves speed)
+      if: contains(matrix.service, 'api') && !contains(matrix.service, 'frontend') && !contains(matrix.service, 'processor')
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles(format('./{0}/pom.xml', matrix.service)) }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
     - name: Build ${{ matrix.service }} Docker image
       run: |
         docker build -t ${{ matrix.service }}:latest ./${{ matrix.service }}
