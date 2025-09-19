@@ -13,7 +13,7 @@ env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
 jobs:
-  # Job para validación rápida de código (Trunk-based)
+  # Job para validación rápida de código (Trunk-based) - SIN AZURE
   quick-validation:
     name: Quick Validation
     runs-on: ubuntu-latest
@@ -32,8 +32,10 @@ jobs:
       run: terraform fmt -check -recursive
       working-directory: ./terraform
       
-    - name: Terraform Init
-      run: terraform init
+    - name: Terraform Init (Local Only)
+      run: |
+        echo "🔑 Initializing Terraform locally (no backend)..."
+        terraform init -backend=false
       working-directory: ./terraform
       
     - name: Terraform Validate
@@ -72,18 +74,23 @@ jobs:
       run: |
         # Construir solo los servicios que han cambiado
         for service in auth-api users-api todos-api frontend log-message-processor; do
-          if [[ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]] && [[ -d "$service" ]]; then
-            echo "Building $service..."
+          if [[ -n "${{ steps.changed-files.outputs[service] }}" ]] && [[ -d "$service" ]]; then
+            echo "📦 Building $service..."
             docker build -t $service:test ./$service
+            echo "✅ $service built successfully"
+          else
+            echo "⏭️ Skipping $service (no changes detected)"
           fi
         done
 
-  # Job para validar infraestructura (sin desplegar)
+  # Job para validar infraestructura (CON Azure, solo en PR)
   validate-infrastructure:
     name: Validate Infrastructure
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: quick-validation
+    # Solo ejecutar si es un Pull Request (para ahorrar recursos en push)
+    if: github.event_name == 'pull_request'
     
     steps:
     - name: Checkout code
@@ -106,12 +113,30 @@ jobs:
         terraform_version: 1.5.7
         
     - name: Terraform Init
-      run: terraform init
+      run: |
+        echo "🔑 Initializing Terraform with remote backend..."
+        terraform init -upgrade
       working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       
     - name: Terraform Plan (Dry Run)
-      run: terraform plan -var="location=centralus" -var="resource_group_location=centralus" -var="db_location=centralus" -detailed-exitcode
+      run: |
+        echo "📋 Generating execution plan (dry run)..."
+        terraform plan \
+          -var="location=centralus" \
+          -var="resource_group_location=centralus" \
+          -var="db_location=centralus" \
+          -detailed-exitcode
       working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       continue-on-error: true
 
   # Job para comentar en PR
@@ -125,6 +150,7 @@ jobs:
     - name: Comment PR
       uses: actions/github-script@v7
       with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const { data: comments } = await github.rest.issues.listComments({
             owner: context.repo.owner,
@@ -140,13 +166,14 @@ jobs:
           
           | Check | Status |
           |-------|--------|
-          | Code Format | ${{ needs.quick-validation.result == 'success' && '✅' || '❌' }} |
-          | Build Services | ${{ needs.build-changed-services.result == 'success' && '✅' || '❌' }} |
-          | Validate Infrastructure | ${{ needs.validate-infrastructure.result == 'success' && '✅' || '❌' }} |
+          | Code Format & Validate | ${{ needs.quick-validation.result == 'success' ? '✅' : '❌' }} |
+          | Build Changed Services | ${{ needs.build-changed-services.result == 'success' ? '✅' : '❌' }} |
+          | Validate Infrastructure | ${{ needs.validate-infrastructure.result == 'success' ? '✅' : '❌' }} |
           
-          **Overall Status:** ${{ needs.validate-infrastructure.result == 'success' && '✅ Ready for merge' || '❌ Issues found' }}
+          **Overall Status:** ${{ needs.validate-infrastructure.result == 'success' ? '✅ Ready for merge' : '❌ Issues found' }}
           
-          ${{ needs.validate-infrastructure.result != 'success' && 'Please fix the issues above before merging.' || 'All checks passed! This feature is ready for review.' }}`;
+          > ℹ️ This validation runs on every push to feature/hotfix branches and PRs against master.
+          > Built with ❤️ following Trunk-Based Development principles.`;
           
           if (botComment) {
             await github.rest.issues.updateComment({
