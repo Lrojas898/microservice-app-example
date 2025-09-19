@@ -49,7 +49,7 @@ jobs:
     
     strategy:
       matrix:
-        service: [auth-api, users-api, todos-api, frontend, log-message-processor ]
+        service: [auth-api, users-api, todos-api, frontend, log-message-processor]
         
     steps:
     - name: Checkout code
@@ -57,56 +57,41 @@ jobs:
       
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      
+
+    # 👉 Verificar si es proyecto Java (tiene pom.xml)
+    - name: Check if Java project (pom.xml exists)
+      id: check_java
+      run: |
+        if [ -f "./${{ matrix.service }}/pom.xml" ]; then
+          echo "is_java=true" >> $GITHUB_OUTPUT
+          echo "✅ ${{ matrix.service }} is a Java project"
+        else
+          echo "is_java=false" >> $GITHUB_OUTPUT
+          echo "📦 ${{ matrix.service }} is not a Java project"
+        fi
+
+    # 👉 Configurar JDK 8 solo para proyectos Java
+    - name: Set up JDK 8
+      if: steps.check_java.outputs.is_java == 'true'
+      uses: actions/setup-java@v3
+      with:
+        java-version: '8'
+        distribution: 'temurin'
+
+    # 👉 Compilar con Maven solo para proyectos Java
+    - name: Build with Maven
+      if: steps.check_java.outputs.is_java == 'true'
+      run: mvn clean package -DskipTests
+      working-directory: ./${{ matrix.service }}
+
+    # 👉 Construir imagen Docker
     - name: Build ${{ matrix.service }} Docker image
       run: |
         docker build -t ${{ matrix.service }}:latest ./${{ matrix.service }}
       working-directory: ./
       
+    # 👉 Test Docker image (opcional, mejorable)
     - name: Test Docker image
       run: |
-        docker run --rm ${{ matrix.service }}:latest --version || echo "Service built successfully"
-
-  # Job para desplegar infraestructura de desarrollo
-  deploy-infrastructure:
-    name: Deploy Development Infrastructure
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: [code-quality, build-services]
-    if: github.ref == 'refs/heads/master'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: |
-          {
-            "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
-            "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
-            "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
-            "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
-          }
-          
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: 1.5.7
-        
-    - name: Terraform Init
-      run: terraform init
-      working-directory: ./terraform
-      
-    - name: Terraform Plan
-      run: terraform plan -var="location=centralus" -var="resource_group_location=centralus" -var="db_location=centralus" -out=tfplan
-      working-directory: ./terraform
-      
-    - name: Terraform Apply
-      run: terraform apply -input=false -auto-approve tfplan
-      working-directory: ./terraform
-      
-    - name: Cleanup
-      run: rm -f tfplan
-      working-directory: ./terraform
+        # Para Java, no tiene sentido --version, así que solo verificamos que la imagen existe
+        docker run --rm ${{ matrix.service }}:latest echo "Service built successfully" || echo "Container test failed"
