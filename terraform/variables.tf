@@ -151,3 +151,30 @@ variable "subscriptionId" {
   type        = string
   default     = null
 }
+
+variable "client_id" {
+  description = "Azure Service Principal Client ID"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "client_secret" {
+  description = "Azure Service Principal Client Secret"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "tenant_id" {
+  description = "Azure Tenant ID"
+  type        = string
+  default     = null
+}
+
+# Ya tenías esta, la dejamos por consistencia
+variable "subscriptionId" {
+  description = "Azure Subscription ID"
+  type        = string
+  default     = null
+}
