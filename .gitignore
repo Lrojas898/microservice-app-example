@@ -1,14 +1,10 @@
 # Terraform
 .terraform/
-*.tfstate
 *.tfstate.backup
 *.tfplan
 terraform.tfvars
 *.auto.tfvars
 */.terraform.lock.hcl
-
-terraform.tfstate
-terraform.tfstate.*
 
 # Ignore all .terraform directories recursively
 **/.terraform/
