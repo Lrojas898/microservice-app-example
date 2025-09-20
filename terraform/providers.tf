@@ -17,7 +17,7 @@ provider "azurerm" {
   features {}
 
   # Usa credenciales explícitas desde GitHub Secrets (pasadas como variables)
-  #COmentario de PRUEBA commit
+  #Comentario de PRUEBA commit y workflow test
   subscription_id = var.subscriptionId
   client_id       = var.client_id
   client_secret   = var.client_secret
