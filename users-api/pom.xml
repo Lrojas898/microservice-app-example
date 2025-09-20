@@ -12,9 +12,9 @@
 	<description>Demo project for Spring Boot</description>
 
 	<parent>
-		<groupId>org.springframework.boot</groupId>
+		<groupId>org.springframework.boot oupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>1.5.6.RELEASE</version>
+		<version>1.5.6.RELEASE</ve
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
