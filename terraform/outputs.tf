@@ -75,3 +75,8 @@ output "frontend_ip" {
 output "testWorkflowInfraGitHubActions" {
   value = "Test Workflow Infra GitHub Actions"
 }
+
+
+output "testWorkflowInfraGitHubActions" {
+  value = "Test Workflow Infra GitHub Actions"
+}
