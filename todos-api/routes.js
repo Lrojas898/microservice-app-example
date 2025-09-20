@@ -8,4 +8,3 @@ module.exports = function (app, {tracer, redisClient, logChannel}) {
 
   app.route('/todos/:taskId')
     .delete(function(req,resp) {return todoController.delete(req,resp)});
-};
