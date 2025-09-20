@@ -52,13 +52,14 @@ resource "azurerm_postgresql_flexible_server" "users" {
 
   sku_name              = "B_Standard_B1ms"
   storage_mb            = 32768
-  backup_retention_days = 7
-  zone                  = "1"
+  
+backup_retention_days = 7
+  zone             = "1"
 
   # Configuración de red
-  delegated_subnet_id           = module.network.users_subnet_id
+  d       elegated_subnet_id           = module.network.users_subnet_id
   private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
-  public_network_access_enabled = false
+ public_network_access_enabled = false
 
   depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
 }
@@ -69,14 +70,14 @@ resource "azurerm_postgresql_flexible_server" "users" {
 resource "azurerm_postgresql_flexible_server" "todos" {
   name                   = "todos-db-server"
   resource_group_name    = azurerm_resource_group.main.name
-  location               = var.db_location
+  location               =        var.db_location
   version                = "13"
   administrator_login    = "adminuser"
   administrator_password = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
 
   sku_name              = "B_Standard_B1ms"
   storage_mb            = 32768
-  backup_retention_days = 7
+backup_retention_days = 7
   zone                  = "1"
 
   # Configuración de red
