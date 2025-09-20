@@ -4,7 +4,7 @@ resource "azurerm_resource_group" "main" {
   name     = var.resource_group_name
   location = var.resource_group_location
 }
-
+#COMENTARIO DE PRUEBA CAMBIO DE INFRASTRUCTURA
 # Módulo de red
 module "network" {
   source = "./modules/network"
