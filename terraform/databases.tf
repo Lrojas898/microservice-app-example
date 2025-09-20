@@ -61,12 +61,12 @@ resource "azurerm_postgresql_flexible_server" "users" {
   public_network_access_enabled = false
 
   depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
-}
+
 
 ## Nota: Eliminado el recurso de base de datos; la app usará DB_NAME estático.
 
 # PostgreSQL Flexible Server para Todos Service
-resource "azurerm_postgresql_flexible_server" "todos" {
+resource "azurerm_postgresql_flexible_server" "todos" 
   name                   = "todos-db-server"
   resource_group_name    = azurerm_resource_group.main.name
   location               = var.db_location
@@ -85,7 +85,7 @@ resource "azurerm_postgresql_flexible_server" "todos" {
   public_network_access_enabled = false
 
   depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
-}
+
 
 ## Nota: Eliminado el recurso de base de datos; la app usará DB_NAME estático.
 
