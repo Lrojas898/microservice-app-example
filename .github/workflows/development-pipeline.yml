@@ -157,7 +157,7 @@ jobs:
         for gofile in *.go; do
           if [ -f "$gofile" ]; then
             # Verificar si el archivo necesita formato
-            if ! gofmt -d "$gofile" | head -1 | grep -q "^$"; then
+            if [ -n "$(gofmt -d "$gofile")" ]; then
               UNFORMATTED_FILES="$UNFORMATTED_FILES $gofile"
             fi
           fi
