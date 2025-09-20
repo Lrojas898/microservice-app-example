@@ -17,3 +17,8 @@ variable "gateway_subnet_id" {
   description = "ID de la subnet para Application Gateway"
   type        = string
 }
+
+variable "vnet_id" {
+  description = "ID de la red virtual principal para DNS link"
+  type        = string
+}

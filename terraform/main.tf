@@ -31,4 +31,5 @@ module "security" {
   location            = var.resource_group_location
   cache_subnet_id     = module.network.cache_subnet_id
   gateway_subnet_id   = module.network.gateway_subnet_id
+  vnet_id             = module.network.vnet_id
 }
