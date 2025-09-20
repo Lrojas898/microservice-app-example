@@ -11,7 +11,7 @@ const {Tracer,
 const {HttpLogger} = require('zipkin-transport-http');
 const zipkinMiddleware = require('zipkin-instrumentation-express').expressMiddleware;
 
-cont logChannel = process.env.REDIS_CHANNEL || 'log_channel';
+const logChannel = process.env.REDIS_CHANNEL || 'log_channel';
 const redisClient = require("redis").createClient({
   host: process.env.REDIS_HOST || 'localhost',
   port: process.env.REDIS_PORT || 6379,
@@ -30,14 +30,14 @@ const redisClient = require("redis").createClient({
   }        
 });
 const port = process.env.TODO_API_PORT || 8082
-cont jwtSecret = process.env.JWT_SECRET || "foo"
+const jwtSecret = process.env.JWT_SECRET || "foo"
 
 const app = express()
 
 // tracing
 const ctxImpl = new CLSContext('zipkin');
 const recorder = new  BatchRecorder({
-  loger: new HttpLogger({
+  logger: new HttpLogger({
     endpoint: ZIPKIN_URL,
     jsonEncoder: JSON_V2
   })
