@@ -175,21 +175,13 @@ jobs:
           exit 1
         fi
         
-        # Validar sintaxis básica (sin importar dependencias)
-        echo "Checking Go syntax..."
-        for gofile in *.go; do
-          if [ -f "$gofile" ]; then
-            # Solo verificar sintaxis, sin compilar
-            go tool compile -pack -o /dev/null "$gofile" 2>/dev/null || {
-              echo "❌ Syntax error in $gofile"
-              # Usar gofmt como fallback para mostrar errores de sintaxis
-              gofmt "$gofile" > /dev/null || echo "Syntax validation failed"
-              exit 1
-            }
-          fi
-        done
+        # ✅ VALIDACIÓN DE COMPILACIÓN REAL (USANDO GO.MOD)
+        echo "Checking Go build (with go.mod)..."
+        go mod tidy
+        go build -o /dev/null . || { echo "❌ Go build failed"; exit 1; }
+        echo "✅ Go build successful"
         
-        echo "✅ Auth API Go validation successful (formatting and syntax OK)"
+        echo "✅ Auth API Go validation successful (formatting and build OK)"
 
     # Python validation (log-message-processor)
     - name: Setup Python
