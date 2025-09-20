@@ -82,7 +82,8 @@ resource "azurerm_application_gateway" "main" {
   }
 
   backend_address_pool {
-    name = "frontend-pool"
+    name         = "frontend-pool"
+    ip_addresses = [var.frontend_container_ip]
   }
 
   backend_http_settings {
@@ -121,13 +122,6 @@ resource "azurerm_application_gateway" "main" {
     backend_http_settings_name = "frontend-settings"
     priority                   = 100
   }
-}
-
-# Backend address pool association for frontend container
-resource "azurerm_application_gateway_backend_address_pool_address" "frontend" {
-  name                    = "frontend-address"
-  backend_address_pool_id = "${azurerm_application_gateway.main.id}/backendAddressPools/frontend-pool"
-  ip_address              = var.frontend_container_ip
 }
 
 

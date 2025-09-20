@@ -16,12 +16,13 @@ terraform {
 provider "azurerm" {
   features {}
 
-  # Usa credenciales explícitas desde GitHub Secrets (pasadas como variables)
-  subscription_id = var.subscriptionId
-  client_id       = var.client_id
-  client_secret   = var.client_secret
-  tenant_id       = var.tenant_id
+  # For local development, use Azure CLI authentication
+  # Comment out service principal config when running locally
+  # subscription_id = var.subscriptionId
+  # client_id       = var.client_id
+  # client_secret   = var.client_secret
+  # tenant_id       = var.tenant_id
 
-  # Fuerza a no usar Azure CLI (recomendado en CI/CD)
-  use_cli = false
+  # Enable Azure CLI for local development
+  # use_cli = false
 }
