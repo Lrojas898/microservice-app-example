@@ -82,91 +82,52 @@ resource "azurerm_application_gateway" "main" {
   }
 
   backend_address_pool {
-    name = "auth-pool"
-  }
-
-  backend_address_pool {
-    name = "users-pool"
-  }
-
-  backend_address_pool {
-    name = "todos-pool"
+    name = "frontend-pool"
   }
 
   backend_http_settings {
-    name                  = "auth-settings"
+    name                  = "frontend-settings"
     cookie_based_affinity = "Disabled"
-    port                  = 8000
+    port                  = 80
     protocol              = "Http"
     request_timeout       = 30
+
+    # Health probe for frontend
+    probe_name = "frontend-probe"
   }
 
-  backend_http_settings {
-    name                  = "users-settings"
-    cookie_based_affinity = "Disabled"
-    port                  = 8083
-    protocol              = "Http"
-    request_timeout       = 45 # Aumentado para manejar heterogeneidad de respuesta
-  }
-
-  backend_http_settings {
-    name                  = "todos-settings"
-    cookie_based_affinity = "Disabled"
-    port                  = 8082
-    protocol              = "Http"
-    request_timeout       = 30
+  probe {
+    name                = "frontend-probe"
+    protocol            = "Http"
+    path                = "/health"
+    host                = "127.0.0.1"
+    interval            = 30
+    timeout             = 30
+    unhealthy_threshold = 3
   }
 
   http_listener {
-    name                           = "auth-listener"
+    name                           = "frontend-listener"
     frontend_ip_configuration_name = "public"
     frontend_port_name             = "http"
     protocol                       = "Http"
-    host_name                      = "auth.example.com"
-  }
-
-  http_listener {
-    name                           = "users-listener"
-    frontend_ip_configuration_name = "public"
-    frontend_port_name             = "http"
-    protocol                       = "Http"
-    host_name                      = "users.example.com"
-  }
-
-  http_listener {
-    name                           = "todos-listener"
-    frontend_ip_configuration_name = "public"
-    frontend_port_name             = "http"
-    protocol                       = "Http"
-    host_name                      = "todos.example.com"
   }
 
   request_routing_rule {
-    name                       = "auth-rule"
+    name                       = "frontend-rule"
     rule_type                  = "Basic"
-    http_listener_name         = "auth-listener"
-    backend_address_pool_name  = "auth-pool"
-    backend_http_settings_name = "auth-settings"
+    http_listener_name         = "frontend-listener"
+    backend_address_pool_name  = "frontend-pool"
+    backend_http_settings_name = "frontend-settings"
     priority                   = 100
   }
+}
 
-  request_routing_rule {
-    name                       = "users-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "users-listener"
-    backend_address_pool_name  = "users-pool"
-    backend_http_settings_name = "users-settings"
-    priority                   = 200
-  }
-
-  request_routing_rule {
-    name                       = "todos-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "todos-listener"
-    backend_address_pool_name  = "todos-pool"
-    backend_http_settings_name = "todos-settings"
-    priority                   = 300
-  }
+# Backend address pool association for frontend container
+resource "azurerm_application_gateway_backend_address_pool_address" "frontend" {
+  name                    = "frontend-address"
+  backend_address_pool_id = "${azurerm_application_gateway.main.id}/backendAddressPools/frontend-pool"
+  ip_address              = var.frontend_container_ip
 }
 
 

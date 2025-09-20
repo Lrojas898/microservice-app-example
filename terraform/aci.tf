@@ -30,7 +30,6 @@ resource "azurerm_container_group" "auth" {
     }
   }
 
-  # 👇👇👇 ESTO ES LO QUE FALTABA 👇👇👇
   image_registry_credential {
     server   = "index.docker.io"
     username = var.dockerhub_username
@@ -74,7 +73,6 @@ resource "azurerm_container_group" "users" {
     }
   }
 
-  # 👇👇👇 ESTO ES LO QUE FALTABA 👇👇👇
   image_registry_credential {
     server   = "index.docker.io"
     username = var.dockerhub_username
@@ -119,7 +117,6 @@ resource "azurerm_container_group" "todos" {
     }
   }
 
-  # 👇👇👇 ESTO ES LO QUE FALTABA 👇👇👇
   image_registry_credential {
     server   = "index.docker.io"
     username = var.dockerhub_username
@@ -137,9 +134,9 @@ resource "azurerm_container_group" "frontend" {
   name                = "frontend-service"
   location            = var.location
   resource_group_name = var.resource_group_name
-  ip_address_type     = "Public"
-  dns_name_label      = "microservice-frontend-${random_string.unique.result}"
+  ip_address_type     = "Private"
   os_type             = "Linux"
+  subnet_ids          = [module.network.frontend_container_subnet_id]
 
   container {
     name   = "frontend-container"
@@ -158,7 +155,6 @@ resource "azurerm_container_group" "frontend" {
     }
   }
 
-  # 👇👇👇 ESTO ES LO QUE FALTABA 👇👇👇
   image_registry_credential {
     server   = "index.docker.io"
     username = var.dockerhub_username
@@ -168,7 +164,8 @@ resource "azurerm_container_group" "frontend" {
   depends_on = [
     module.network,
     azurerm_container_group.auth,
-    azurerm_container_group.todos
+    azurerm_container_group.todos,
+    azurerm_container_group.users
   ]
 }
 

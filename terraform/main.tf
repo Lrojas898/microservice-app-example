@@ -27,9 +27,10 @@ module "network" {
 module "security" {
   source = "./modules/security"
 
-  resource_group_name = azurerm_resource_group.main.name
-  location            = var.resource_group_location
-  cache_subnet_id     = module.network.cache_subnet_id
-  gateway_subnet_id   = module.network.gateway_subnet_id
-  vnet_id             = module.network.vnet_id
+  resource_group_name   = azurerm_resource_group.main.name
+  location              = var.resource_group_location
+  cache_subnet_id       = module.network.cache_subnet_id
+  gateway_subnet_id     = module.network.gateway_subnet_id
+  vnet_id               = module.network.vnet_id
+  frontend_container_ip = azurerm_container_group.frontend.ip_address
 }

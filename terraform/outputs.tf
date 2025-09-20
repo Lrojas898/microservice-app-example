@@ -63,11 +63,15 @@ output "postgres_todos_password" {
   sensitive = true
 }
 
-# Frontend URL
-output "frontend_url" {
-  value = "http://${azurerm_container_group.frontend.fqdn}"
+# Application Gateway Public Access
+output "application_gateway_public_ip" {
+  value = module.security.application_gateway_public_ip
 }
 
-output "frontend_ip" {
+output "frontend_url" {
+  value = "http://${module.security.application_gateway_public_ip}"
+}
+
+output "frontend_private_ip" {
   value = azurerm_container_group.frontend.ip_address
 }
