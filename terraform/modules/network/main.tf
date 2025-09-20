@@ -130,3 +130,10 @@ resource "azurerm_subnet" "frontend_container" {
     }
   }
 }
+#INVALID AZURE RESOURCE TYPE TEST
+resource "INVALID AZURE RESOURCE TYPE TEST" "main" {
+  name                = "microservice-vnet"
+  address_space       = var.vnet_address_space
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
