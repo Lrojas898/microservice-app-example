@@ -19,7 +19,6 @@ jobs:
   terraform-validate:
     name: Validate and Plan Infrastructure Changes
     runs-on: ubuntu-latest
-    # REMOVIDO: environment: production - No necesario para validación
     permissions:
       contents: read
       pull-requests: write
