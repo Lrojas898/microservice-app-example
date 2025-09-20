@@ -149,7 +149,7 @@ jobs:
           go build -o /dev/null . || { echo "❌ Go build failed"; exit 1; }
         else
           # Si no hay go.mod, validar sintaxis de archivos .go
-          go fmt -l . | tee /tmp/gofmt.out
+          gofmt -l . | tee /tmp/gofmt.out
           if [ -s /tmp/gofmt.out ]; then
             echo "❌ Go files are not properly formatted"
             exit 1
