@@ -10,6 +10,41 @@ resource "azurerm_redis_cache" "main" {
   minimum_tls_version = "1.2"
 }
 
+# --- Redis Private Endpoint and DNS ---
+resource "azurerm_private_endpoint" "redis" {
+  name                = "redis-pe"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  subnet_id           = var.cache_subnet_id
+
+  private_service_connection {
+    name                           = "redis-privatesc"
+    private_connection_resource_id = azurerm_redis_cache.main.id
+    subresource_names              = ["redisCache"]
+    is_manual_connection           = false
+  }
+}
+
+resource "azurerm_private_dns_zone" "redis" {
+  name                = "privatelink.redis.cache.windows.net"
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "redis" {
+  name                  = "redis-dns-link"
+  resource_group_name   = var.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.redis.name
+  virtual_network_id    = var.vnet_id
+}
+
+resource "azurerm_private_dns_a_record" "redis" {
+  name                = azurerm_redis_cache.main.name
+  zone_name           = azurerm_private_dns_zone.redis.name
+  resource_group_name = var.resource_group_name
+  ttl                 = 300
+  records             = [azurerm_private_endpoint.redis.private_service_connection[0].private_ip_address]
+}
+
 # Public IP para el Application Gateway
 resource "azurerm_public_ip" "appgw" {
   name                = "appgw-public-ip"
