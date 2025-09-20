@@ -71,3 +71,7 @@ output "frontend_url" {
 output "frontend_ip" {
   value = azurerm_container_group.frontend.ip_address
 }
+
+output "testWorkflowInfraGitHubActions" {
+  value = "Test Workflow Infra GitHub Actions"
+}
