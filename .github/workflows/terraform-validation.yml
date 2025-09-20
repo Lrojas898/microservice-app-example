@@ -19,7 +19,6 @@ jobs:
   terraform-validate:
     name: Validate and Plan Infrastructure Changes
     runs-on: ubuntu-latest
-    # REMOVIDO: environment: production - No necesario para validación
     permissions:
       contents: read
       pull-requests: write
@@ -55,7 +54,7 @@ jobs:
           chmod +x scripts/import_existing.sh
           ./scripts/import_existing.sh microservice-app-rg
         working-directory: terraform
-        continue-on-error: true  # No fallar si ya están importados
+        continue-on-error: true
 
       - name: Terraform Format Check
         id: fmt
@@ -96,7 +95,7 @@ jobs:
           scan-ref: 'terraform/'
           format: 'sarif'
           output: 'terraform/trivy-results.sarif'
-          exit-code: '0'  # No fallar por vulnerabilidades en validación
+          exit-code: '0'
           severity: 'CRITICAL,HIGH'
 
       - name: Upload SARIF Report
@@ -128,5 +127,3 @@ ${truncatedPlan}
 
 > **Security Note**: All changes have been scanned for security vulnerabilities using Checkov and Trivy.`
             });
-
-  # REMOVIDO: approval-gate job - No necesario para validación en ramas
