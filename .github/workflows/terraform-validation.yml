@@ -7,8 +7,7 @@ on:
       - 'terraform/**'
   pull_request:
     branches: [ master ]
-    paths:
-      - 'terraform/**'
+    # REMOVIDO: paths filter para que siempre se ejecute en PRs hacia master
     types: [opened, synchronize, reopened]
 
 env:
@@ -37,7 +36,35 @@ jobs:
           fetch-depth: 0
           lfs: false
 
+      # Nuevo: Detectar si hay cambios en terraform
+      - name: Detect Terraform Changes
+        id: terraform-changes
+        run: |
+          echo "Checking for terraform changes in PR..."
+          if git diff --name-only origin/master...HEAD | grep -q '^terraform/'; then
+            echo "terraform_changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Terraform changes detected - full validation will run"
+          else
+            echo "terraform_changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No terraform changes detected - skipping detailed validation"
+          fi
+
+      # Validación rápida cuando no hay cambios en terraform
+      - name: Quick Validation (No Terraform Changes)
+        if: steps.terraform-changes.outputs.terraform_changed == 'false'
+        run: |
+          echo "🚀 Infrastructure Validation Pipeline - Quick Mode"
+          echo "✅ No infrastructure changes detected in this PR"
+          echo "✅ Terraform validation: SKIPPED (not needed)"
+          echo "✅ Security scans: SKIPPED (not needed)" 
+          echo "✅ Infrastructure validation completed successfully"
+          echo ""
+          echo "Note: This PR does not modify infrastructure code."
+          echo "If you need to validate terraform changes, modify files in terraform/ directory."
+
+      # El resto de steps solo se ejecutan si hay cambios en terraform
       - name: Azure login
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         uses: azure/login@v1
         with:
           creds: |
@@ -49,11 +76,13 @@ jobs:
             }
 
       - name: Setup Terraform
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.7
 
       - name: Terraform Init
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         id: init
         run: terraform init -input=false -upgrade
         working-directory: terraform
@@ -64,6 +93,7 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Import Existing Azure Resources (idempotent)
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         run: |
           chmod +x scripts/import_existing.sh
           ./scripts/import_existing.sh microservice-app-rg
@@ -76,11 +106,13 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Format Check
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         id: fmt
         run: terraform fmt -check -recursive
         working-directory: terraform
 
       - name: Terraform Validate
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         id: validate
         run: terraform validate -no-color
         working-directory: terraform
@@ -91,6 +123,7 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Plan
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         id: plan
         run: |
           terraform plan \
@@ -109,6 +142,7 @@ jobs:
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Upload Terraform Plan Artifacts
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: infrastructure-plan-${{ github.run_id }}
@@ -118,12 +152,14 @@ jobs:
           retention-days: 30
 
       - name: Security Scan - Checkov
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         run: |
           pip3 install checkov
           checkov -d terraform/ --framework terraform --quiet --soft-fail
         working-directory: terraform
 
       - name: Security Scan - Trivy
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'config'
@@ -134,14 +170,15 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload SARIF Report
+        if: steps.terraform-changes.outputs.terraform_changed == 'true'
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: terraform/trivy-results.sarif
         continue-on-error: true
 
-      - name: Comment Plan in PR
+      - name: Comment Plan in PR (Full Validation)
+        if: steps.terraform-changes.outputs.terraform_changed == 'true' && github.event_name == 'pull_request'
         uses: actions/github-script@v6
-        if: github.event_name == 'pull_request'
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -157,4 +194,23 @@ jobs:
                     'This PR proposes the following infrastructure changes:\n\n' +
                     '```hcl\n' + truncatedPlan + '\n```\n\n' +
                     '> **Security Note**: All changes have been scanned for security vulnerabilities using Checkov and Trivy.'
+            });
+
+      - name: Comment No Changes in PR
+        if: steps.terraform-changes.outputs.terraform_changed == 'false' && github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '### ✅ Infrastructure Validation - No Changes Detected\n\n' +
+                    'This PR does not include any infrastructure changes (`terraform/` directory not modified).\n\n' +
+                    '**Validation Status:**\n' +
+                    '- ✅ Infrastructure validation: PASSED (no changes to validate)\n' +
+                    '- ✅ Security scans: SKIPPED (not applicable)\n' +
+                    '- ✅ Terraform plan: SKIPPED (not applicable)\n\n' +
+                    '> **Note**: If you intended to modify infrastructure, ensure your changes are in the `terraform/` directory.'
             });
