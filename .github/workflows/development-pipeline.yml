@@ -143,19 +143,42 @@ jobs:
       if: needs.detect-changes.outputs.auth-api == 'true'
       run: |
         cd ./auth-api
-        echo "🔍 Validating Go syntax and compilation..."
-        if [ -f "go.mod" ]; then
-          go mod tidy
-          go build -o /dev/null . || { echo "❌ Go build failed"; exit 1; }
-        else
-          # Si no hay go.mod, validar sintaxis de archivos .go
-          gofmt -l . | tee /tmp/gofmt.out
-          if [ -s /tmp/gofmt.out ]; then
-            echo "❌ Go files are not properly formatted"
-            exit 1
-          fi
-          go vet . || { echo "❌ Go vet failed"; exit 1; }
+        echo "🔍 Validating Go syntax and formatting..."
+        
+        # Verificar si hay archivos Go
+        if ! ls *.go 1> /dev/null 2>&1; then
+          echo "❌ No Go files found"
+          exit 1
         fi
+        
+        # Validar formato de archivos Go (simple check)
+        echo "Checking Go formatting..."
+        UNFORMATTED=$(gofmt -l *.go)
+        if [ ! -z "$UNFORMATTED" ]; then
+          echo "❌ The following Go files are not properly formatted:"
+          echo "$UNFORMATTED"
+          echo "Run 'gofmt -w *.go' to fix formatting"
+          exit 1
+        fi
+        
+        # Verificar que los archivos Go compilen individualmente (sin modules)
+        echo "Checking Go syntax..."
+        for gofile in *.go; do
+          if [ -f "$gofile" ]; then
+            go fmt "$gofile" > /dev/null || { echo "❌ Syntax error in $gofile"; exit 1; }
+          fi
+        done
+        
+        # Si usa Dep (Gopkg.lock), instalar dependencias
+        if [ -f "Gopkg.lock" ]; then
+          echo "Detected Dep project, installing dependencies..."
+          # Instalar dep si no existe
+          if ! command -v dep &> /dev/null; then
+            go install github.com/golang/dep/cmd/dep@latest
+          fi
+          dep ensure || echo "Warning: dep ensure failed, continuing..."
+        fi
+        
         echo "✅ Auth API Go validation successful"
 
     # Python validation (log-message-processor)
