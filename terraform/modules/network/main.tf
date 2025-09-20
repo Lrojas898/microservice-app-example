@@ -5,7 +5,7 @@ resource "azurerm_virtual_network" "main" {
   location            = var.location
   resource_group_name = var.resource_group_name
 }
-
+#CAMBIO EN NERTWORK PRUEBA DE CAMBIO EN INFRASTRUCTURA
 # Subnet para Auth Microservice
 resource "azurerm_subnet" "auth" {
   name                 = "auth-db-subnet"
