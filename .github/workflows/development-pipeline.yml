@@ -4,57 +4,193 @@ on:
   push:
     branches: [ develop, dev, feature/* ]
   pull_request:
-    branches: [ develop, dev, master ]  # 👈 Añadimos master aquí para detectar PRs hacia master
+    branches: [ develop, dev, master ]
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
-  # Job para validar y formatear código
-  code-quality:
-    name: Code Quality
+  detect-changes:
+    name: Detect Changed Services
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    
+    outputs:
+      todos-api: ${{ steps.changes.outputs.todos-api }}
+      users-api: ${{ steps.changes.outputs.users-api }}
+      auth-api: ${{ steps.changes.outputs.auth-api }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+      log-message-processor: ${{ steps.changes.outputs.log-message-processor }}
+      terraform: ${{ steps.changes.outputs.terraform }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Detect changed files
+      uses: dorny/paths-filter@v2
+      id: changes
+      with:
+        filters: |
+          todos-api:
+            - 'todos-api/**'
+          users-api:
+            - 'users-api/**'
+          auth-api:
+            - 'auth-api/**'
+          frontend:
+            - 'frontend/**'
+          log-message-processor:
+            - 'log-message-processor/**'
+          terraform:
+            - 'terraform/**'
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: detect-changes
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    # Terraform validation (solo si hay cambios en terraform)
     - name: Setup Terraform
+      if: needs.detect-changes.outputs.terraform == 'true'
       uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: 1.5.7
         
     - name: Terraform Format Check
+      if: needs.detect-changes.outputs.terraform == 'true'
       run: terraform fmt -check -recursive
       working-directory: ./terraform
       
     - name: Terraform Init (Validation Only)
+      if: needs.detect-changes.outputs.terraform == 'true'
       run: |
         echo "🔑 Initializing Terraform for validation (no deployment)..."
         terraform init -backend=false
       working-directory: ./terraform
       
     - name: Terraform Validate
+      if: needs.detect-changes.outputs.terraform == 'true'
       run: terraform validate
       working-directory: ./terraform
 
-  # Job para validar que PR hacia master tenga solo 1 commit (nuevo)
+    # Node.js validation (todos-api y frontend)
+    - name: Setup Node.js
+      if: needs.detect-changes.outputs.todos-api == 'true' || needs.detect-changes.outputs.frontend == 'true'
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Validate TODOs API (Node.js)
+      if: needs.detect-changes.outputs.todos-api == 'true'
+      run: |
+        cd ./todos-api
+        echo "🔍 Installing dependencies and validating Node.js syntax..."
+        npm install
+        # Validar sintaxis de archivos JavaScript principales
+        node -c app.js || { echo "❌ Syntax error in app.js"; exit 1; }
+        if [ -f "server.js" ]; then
+          node -c server.js || { echo "❌ Syntax error in server.js"; exit 1; }
+        fi
+        # Validar archivos en routes/ si existen
+        if [ -d "routes" ]; then
+          for file in routes/*.js; do
+            if [ -f "$file" ]; then
+              node -c "$file" || { echo "❌ Syntax error in $file"; exit 1; }
+            fi
+          done
+        fi
+        echo "✅ TODOs API JavaScript syntax is valid"
+
+    - name: Validate Frontend (Vue.js)
+      if: needs.detect-changes.outputs.frontend == 'true'
+      run: |
+        cd ./frontend
+        echo "🔍 Validating Vue.js frontend..."
+        if [ -f "package.json" ]; then
+          npm install
+          # Intentar build para validar sintaxis Vue
+          npm run build || { echo "❌ Frontend build failed"; exit 1; }
+        fi
+        echo "✅ Frontend validation completed"
+
+    # Java validation (users-api)
+    - name: Setup Java
+      if: needs.detect-changes.outputs.users-api == 'true'
+      uses: actions/setup-java@v3
+      with:
+        java-version: '8'
+        distribution: 'temurin'
+        
+    - name: Validate Users API (Java/Spring Boot)
+      if: needs.detect-changes.outputs.users-api == 'true'
+      run: |
+        cd ./users-api
+        echo "🔍 Validating Java syntax and compilation..."
+        mvn clean compile || { echo "❌ Java compilation failed"; exit 1; }
+        echo "✅ Users API Java compilation successful"
+
+    # Go validation (auth-api)
+    - name: Setup Go
+      if: needs.detect-changes.outputs.auth-api == 'true'
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.19'
+        
+    - name: Validate Auth API (Go)
+      if: needs.detect-changes.outputs.auth-api == 'true'
+      run: |
+        cd ./auth-api
+        echo "🔍 Validating Go syntax and compilation..."
+        if [ -f "go.mod" ]; then
+          go mod tidy
+          go build -o /dev/null . || { echo "❌ Go build failed"; exit 1; }
+        else
+          # Si no hay go.mod, validar sintaxis de archivos .go
+          go fmt -l . | tee /tmp/gofmt.out
+          if [ -s /tmp/gofmt.out ]; then
+            echo "❌ Go files are not properly formatted"
+            exit 1
+          fi
+          go vet . || { echo "❌ Go vet failed"; exit 1; }
+        fi
+        echo "✅ Auth API Go validation successful"
+
+    # Python validation (log-message-processor)
+    - name: Setup Python
+      if: needs.detect-changes.outputs.log-message-processor == 'true'
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Validate Log Message Processor (Python)
+      if: needs.detect-changes.outputs.log-message-processor == 'true'
+      run: |
+        cd ./log-message-processor
+        echo "🔍 Validating Python syntax..."
+        # Validar sintaxis de todos los archivos Python
+        python3 -m py_compile *.py || { echo "❌ Python syntax validation failed"; exit 1; }
+        # Instalar dependencias si existe requirements.txt
+        if [ -f "requirements.txt" ]; then
+          pip install -r requirements.txt
+        fi
+        echo "✅ Log Message Processor Python validation successful"
+
   validate-pr-single-commit:
     name: Validate PR has Single Commit
     runs-on: ubuntu-latest
-    # Solo se ejecuta si es un PR hacia master
     if: github.event_name == 'pull_request' && github.base_ref == 'master'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Necesario para ver todo el historial
+        fetch-depth: 0
 
     - name: Get PR commit count
       id: commit_count
       run: |
-        # Cuenta los commits en el PR (desde la base hasta la cabeza)
         COUNT=$(git rev-list --count ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
         echo "commit_count=$COUNT" >> $GITHUB_OUTPUT
         echo "🔍 PR has $COUNT commits"
@@ -71,15 +207,18 @@ jobs:
       run: |
         echo "✅ PR has exactly 1 commit. Ready for review!"
 
-  # Job para construir imágenes Docker para desarrollo
   build-services:
     name: Build Services
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Solo necesita code-quality, no validate-pr-single-commit (puede correr en paralelo)
-    needs: code-quality
+    needs: [detect-changes, code-quality]
     outputs:
       image_tag: ${{ steps.tag.outputs.image_tag }}
+      todos-built: ${{ steps.builds.outputs.todos-built }}
+      users-built: ${{ steps.builds.outputs.users-built }}
+      auth-built: ${{ steps.builds.outputs.auth-built }}
+      frontend-built: ${{ steps.builds.outputs.frontend-built }}
+      log-processor-built: ${{ steps.builds.outputs.log-processor-built }}
 
     steps:
     - name: Checkout code
@@ -96,14 +235,16 @@ jobs:
         echo "image_tag=$TAG" >> $GITHUB_OUTPUT
         echo "📦 Generated tag: $TAG"
 
-    # Set up JDK 8 for Java projects
-    - name: Set up JDK 8
+    # Build users-api solo si cambió
+    - name: Setup Java for users-api
+      if: needs.detect-changes.outputs.users-api == 'true'
       uses: actions/setup-java@v3
       with:
         java-version: '8'
         distribution: 'temurin'
 
     - name: Cache Maven dependencies
+      if: needs.detect-changes.outputs.users-api == 'true'
       uses: actions/cache@v3
       with:
         path: ~/.m2/repository
@@ -111,26 +252,38 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    # Build users-api (Java/Spring Boot)
     - name: Build users-api
+      if: needs.detect-changes.outputs.users-api == 'true'
       run: |
         cd ./users-api
         mvn clean package -DskipTests
         cd ..
         docker build -t users-api:${{ steps.tag.outputs.image_tag }} ./users-api
 
-    # Build auth-api (Go)
+    # Build auth-api solo si cambió
     - name: Build auth-api
+      if: needs.detect-changes.outputs.auth-api == 'true'
       run: |
         docker build -t auth-api:${{ steps.tag.outputs.image_tag }} ./auth-api
 
-    # Build todos-api (Node.js)
+    # Build todos-api solo si cambió
+    - name: Setup Node.js for todos-api
+      if: needs.detect-changes.outputs.todos-api == 'true'
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
     - name: Build todos-api
+      if: needs.detect-changes.outputs.todos-api == 'true'
       run: |
+        cd ./todos-api
+        npm install
+        cd ..
         docker build -t todos-api:${{ steps.tag.outputs.image_tag }} ./todos-api
 
-    # Build frontend (Vue.js) - using pre-built folder
+    # Build frontend solo si cambió
     - name: Build frontend
+      if: needs.detect-changes.outputs.frontend == 'true'
       run: |
         echo "⚠️ Using pre-built 'build' folder from repo"
         if [ ! -d "frontend/build" ]; then
@@ -140,35 +293,26 @@ jobs:
         fi
         docker build -t frontend:${{ steps.tag.outputs.image_tag }} ./frontend
 
-    # Build log-message-processor (Python)
+    # Build log-message-processor solo si cambió
     - name: Build log-message-processor
+      if: needs.detect-changes.outputs.log-message-processor == 'true'
       run: |
         docker build -t log-message-processor:${{ steps.tag.outputs.image_tag }} ./log-message-processor
 
-    - name: Test Docker images (basic smoke test)
+    # Registrar qué se construyó
+    - name: Record build outputs
+      id: builds
       run: |
-        TAG=${{ steps.tag.outputs.image_tag }}
-        echo "🧪 Testing image: users-api:$TAG"
-        docker run --rm --entrypoint=echo users-api:$TAG "✅ Built successfully" || exit 1
+        echo "todos-built=${{ needs.detect-changes.outputs.todos-api }}" >> $GITHUB_OUTPUT
+        echo "users-built=${{ needs.detect-changes.outputs.users-api }}" >> $GITHUB_OUTPUT
+        echo "auth-built=${{ needs.detect-changes.outputs.auth-api }}" >> $GITHUB_OUTPUT
+        echo "frontend-built=${{ needs.detect-changes.outputs.frontend }}" >> $GITHUB_OUTPUT
+        echo "log-processor-built=${{ needs.detect-changes.outputs.log-message-processor }}" >> $GITHUB_OUTPUT
 
-        echo "🧪 Testing image: auth-api:$TAG"
-        docker run --rm --entrypoint=echo auth-api:$TAG "✅ Built successfully" || exit 1
-
-        echo "🧪 Testing image: todos-api:$TAG"
-        docker run --rm --entrypoint=echo todos-api:$TAG "✅ Built successfully" || exit 1
-
-        echo "🧪 Testing image: frontend:$TAG"
-        docker run --rm --entrypoint=echo frontend:$TAG "✅ Built successfully" || exit 1
-
-        echo "🧪 Testing image: log-message-processor:$TAG"
-        docker run --rm --entrypoint=echo log-message-processor:$TAG "✅ Built successfully" || exit 1
-
-  # Job para notificaciones
   notify-build:
     name: Notify Build
     runs-on: ubuntu-latest
-    # Si validate-pr-single-commit falla, este job no se ejecutará (porque build-services necesita code-quality, pero no depende del nuevo job)
-    needs: [code-quality, build-services]
+    needs: [detect-changes, code-quality, build-services]
     if: always()
     
     steps:
@@ -176,13 +320,42 @@ jobs:
       if: always()
       run: |
         TAG=${{ needs.build-services.outputs.image_tag }}
-        echo "✅ Development build completed!"
-        echo "📦 Images built locally with tag: $TAG"
-        echo "🔗 users-api:$TAG"
-        echo "🔗 auth-api:$TAG"
-        echo "🔗 todos-api:$TAG"
-        echo "🔗 frontend:$TAG"
-        echo "🔗 log-message-processor:$TAG"
+        echo "✅ Development pipeline completed!"
+        echo ""
+        echo "🔄 Services processed:"
+        if [ "${{ needs.build-services.outputs.todos-built }}" == "true" ]; then
+          echo "  ✅ todos-api:$TAG"
+        fi
+        if [ "${{ needs.build-services.outputs.users-built }}" == "true" ]; then
+          echo "  ✅ users-api:$TAG"
+        fi
+        if [ "${{ needs.build-services.outputs.auth-built }}" == "true" ]; then
+          echo "  ✅ auth-api:$TAG"
+        fi
+        if [ "${{ needs.build-services.outputs.frontend-built }}" == "true" ]; then
+          echo "  ✅ frontend:$TAG"
+        fi
+        if [ "${{ needs.build-services.outputs.log-processor-built }}" == "true" ]; then
+          echo "  ✅ log-message-processor:$TAG"
+        fi
+        
+        echo ""
+        echo "⏭️ Services skipped (no changes detected):"
+        if [ "${{ needs.build-services.outputs.todos-built }}" != "true" ]; then
+          echo "  ⏭️ todos-api (no changes)"
+        fi
+        if [ "${{ needs.build-services.outputs.users-built }}" != "true" ]; then
+          echo "  ⏭️ users-api (no changes)"
+        fi
+        if [ "${{ needs.build-services.outputs.auth-built }}" != "true" ]; then
+          echo "  ⏭️ auth-api (no changes)"
+        fi
+        if [ "${{ needs.build-services.outputs.frontend-built }}" != "true" ]; then
+          echo "  ⏭️ frontend (no changes)"
+        fi
+        if [ "${{ needs.build-services.outputs.log-processor-built }}" != "true" ]; then
+          echo "  ⏭️ log-message-processor (no changes)"
+        fi
         
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           echo "📝 This was triggered by PR #${{ github.event.pull_request.number }}"
