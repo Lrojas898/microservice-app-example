@@ -5,7 +5,7 @@ resource "azurerm_resource_group" "main" {
   location = var.resource_group_location
 }
 
-# Módulo de red
+# Módulo de redes
 module "network" {
   source = "./modules/network"
 
