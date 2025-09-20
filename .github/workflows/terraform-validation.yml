@@ -1,8 +1,12 @@
 name: Infrastructure Validation Pipeline
 
 on:
+  push:
+    branches: [ 'infra/*' ]          
+    paths:
+      - 'terraform/**'
   pull_request:
-    branches: [master]
+    branches: [ master ]
     paths:
       - 'terraform/**'
     types: [opened, synchronize, reopened]
