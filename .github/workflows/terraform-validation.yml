@@ -11,6 +11,12 @@ on:
       - 'terraform/**'
     types: [opened, synchronize, reopened]
 
+env:
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -31,23 +37,31 @@ jobs:
           fetch-depth: 0
           lfs: false
 
-      - name: Azure login (OIDC)
+      - name: Azure login
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            }
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.7
-          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Init
         id: init
         run: terraform init -input=false -upgrade
         working-directory: terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Import Existing Azure Resources (idempotent)
         run: |
@@ -55,6 +69,11 @@ jobs:
           ./scripts/import_existing.sh microservice-app-rg
         working-directory: terraform
         continue-on-error: true
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Format Check
         id: fmt
@@ -65,13 +84,29 @@ jobs:
         id: validate
         run: terraform validate -no-color
         working-directory: terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Plan
         id: plan
         run: |
-          terraform plan -var="location=centralus" -var="resource_group_location=centralus" -var="db_location=centralus" -input=false -no-color -out=tfplan
+          terraform plan \
+            -var="location=centralus" \
+            -var="resource_group_location=centralus" \
+            -var="db_location=centralus" \
+            -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
+            -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
+            -input=false -no-color -out=tfplan
           terraform show -no-color tfplan > tfplan.txt
         working-directory: terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Upload Terraform Plan Artifacts
         uses: actions/upload-artifact@v4
@@ -118,12 +153,8 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `### 📋 Infrastructure Change Review
-This PR proposes the following infrastructure changes:
-
-\`\`\`hcl
-${truncatedPlan}
-\`\`\`
-
-> **Security Note**: All changes have been scanned for security vulnerabilities using Checkov and Trivy.`
+              body: '### 📋 Infrastructure Change Review\n' +
+                    'This PR proposes the following infrastructure changes:\n\n' +
+                    '```hcl\n' + truncatedPlan + '\n```\n\n' +
+                    '> **Security Note**: All changes have been scanned for security vulnerabilities using Checkov and Trivy.'
             });
