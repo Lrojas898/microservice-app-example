@@ -1,5 +1,5 @@
 # Build stage
-FROM maven:3.8.4-openjdk-11-slim AS build
+FROM maven:3.8.4-openjdk-8-slim AS build
 WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
@@ -7,7 +7,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Runtime stage
-FROM openjdk:11-jre-slim
+FROM openjdk:8-jre-slim
 WORKDIR /app
 
 # Install curl for health checks
@@ -25,7 +25,7 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8083/health || exit 1
 
-# Enhanced JVM settings for Java 11 and containers
+# Enhanced JVM settings for Java 8 and containers
 ENTRYPOINT ["java", \
     "-Djava.security.egd=file:/dev/./urandom", \
     "-Dspring.profiles.active=docker", \
@@ -33,8 +33,8 @@ ENTRYPOINT ["java", \
     "-Xmx512m", \
     "-XX:+UseG1GC", \
     "-XX:MaxGCPauseMillis=200", \
-    "-XX:+UseContainerSupport", \
-    "-XX:MaxRAMPercentage=75.0", \
+    "-XX:+UnlockExperimentalVMOptions", \
+    "-XX:+UseCGroupMemoryLimitForHeap", \
     "-XX:+HeapDumpOnOutOfMemoryError", \
     "-XX:HeapDumpPath=/tmp/heapdump.hprof", \
     "-Dlogging.level.org.springframework.boot.autoconfigure=INFO", \

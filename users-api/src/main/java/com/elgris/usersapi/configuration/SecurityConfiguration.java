@@ -21,14 +21,16 @@ public class SecurityConfiguration {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests(authz -> authz
+        http.authorizeHttpRequests()
                 .antMatchers("/health", "/ready", "/users/health", "/users/ready",
                         "/actuator/**", "/info", "/metrics")
                 .permitAll()
-                .anyRequest().authenticated())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .anyRequest().authenticated()
+                .and()
+                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and()
                 .addFilterAfter(jwtAuthenticationFilter, BasicAuthenticationFilter.class)
-                .csrf(csrf -> csrf.disable());
+                .csrf().disable();
 
         return http.build();
     }
