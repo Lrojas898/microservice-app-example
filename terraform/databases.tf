@@ -128,32 +128,32 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
 }
 
 # Manually create DNS records for existing PostgreSQL servers
-resource "azurerm_private_dns_a_record" "users_db" {
+resource "azurerm_private_dns_cname_record" "users_db" {
   name                = "users-db-server"
   zone_name           = azurerm_private_dns_zone.postgres.name
   resource_group_name = azurerm_resource_group.main.name
   ttl                 = 300
-  records             = [azurerm_postgresql_flexible_server.users.private_fqdn]
+  record              = azurerm_postgresql_flexible_server.users.fqdn
 
   depends_on = [azurerm_postgresql_flexible_server.users]
 }
 
-resource "azurerm_private_dns_a_record" "todos_db" {
+resource "azurerm_private_dns_cname_record" "todos_db" {
   name                = "todos-db-server"
   zone_name           = azurerm_private_dns_zone.postgres.name
   resource_group_name = azurerm_resource_group.main.name
   ttl                 = 300
-  records             = [azurerm_postgresql_flexible_server.todos.private_fqdn]
+  record              = azurerm_postgresql_flexible_server.todos.fqdn
 
   depends_on = [azurerm_postgresql_flexible_server.todos]
 }
 
-resource "azurerm_private_dns_a_record" "auth_db" {
+resource "azurerm_private_dns_cname_record" "auth_db" {
   name                = "auth-db-server"
   zone_name           = azurerm_private_dns_zone.postgres.name
   resource_group_name = azurerm_resource_group.main.name
   ttl                 = 300
-  records             = [azurerm_postgresql_flexible_server.auth.private_fqdn]
+  record              = azurerm_postgresql_flexible_server.auth.fqdn
 
   depends_on = [azurerm_postgresql_flexible_server.auth]
 }
