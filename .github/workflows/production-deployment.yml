@@ -2,18 +2,18 @@ name: Production Deployment Pipeline
 
 on:
   push:
-    branches: [ master ]
-    tags: [ 'v*' ]
+    branches: [master]
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy to'
+        description: "Environment to deploy to"
         required: true
-        default: 'production'
+        default: "production"
         type: choice
         options:
-        - production
-        - staging
+          - production
+          - staging
 
 env:
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -33,50 +33,50 @@ jobs:
     name: Pre-deployment Checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: |
-          {
-            "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
-            "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
-            "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
-            "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-          }
-          
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: 1.5.7
-        
-    - name: Terraform Format Check
-      run: terraform fmt -check -recursive
-      working-directory: ./terraform
-      
-    - name: Terraform Init
-      run: |
-        echo "🔑 Initializing Terraform with remote backend for validation..."
-        terraform init -upgrade
-      working-directory: ./terraform
-      env:
-        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      
-    - name: Terraform Validate
-      run: terraform validate
-      working-directory: ./terraform
-      env:
-        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            }
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: ./terraform
+
+      - name: Terraform Init
+        run: |
+          echo "🔑 Initializing Terraform with remote backend for validation..."
+          terraform init -upgrade
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
   # Job para construir imágenes Docker para producción
   build-production-images:
@@ -88,82 +88,87 @@ jobs:
       image_tag: ${{ steps.tag.outputs.image_tag }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Generate unique image tag
-      id: tag
-      run: |
-        TAG=gh-${GITHUB_SHA::8}
-        echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+      - name: Generate unique image tag
+        id: tag
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+            TAG="latest"
+          else
+            TAG="gh-${GITHUB_SHA::8}"
+          fi
+          echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+          echo "📦 Generated tag: $TAG"
 
-    # Set up JDK 8 for Java projects
-    - name: Set up JDK 8
-      uses: actions/setup-java@v3
-      with:
-        java-version: '8'
-        distribution: 'temurin'
+      # Set up JDK 8 for Java projects
+      - name: Set up JDK 8
+        uses: actions/setup-java@v3
+        with:
+          java-version: "8"
+          distribution: "temurin"
 
-    - name: Cache Maven dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.m2/repository
-        key: ${{ runner.os }}-maven-${{ hashFiles('users-api/pom.xml') }}
-        restore-keys: |
-          ${{ runner.os }}-maven-
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('users-api/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
-    # Build users-api (Java/Spring Boot)
-    - name: Build users-api
-      run: |
-        cd ./users-api
-        mvn clean package -DskipTests
-        cd ..
-        TAG=${{ steps.tag.outputs.image_tag }}
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/users-api:$TAG ./users-api
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/users-api:$TAG
+      # Build users-api (Java/Spring Boot)
+      - name: Build users-api
+        run: |
+          cd ./users-api
+          mvn clean package -DskipTests
+          cd ..
+          TAG=${{ steps.tag.outputs.image_tag }}
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/users-service:$TAG ./users-api
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/users-service:$TAG
 
-    # Build auth-api (Go)
-    - name: Build auth-api
-      run: |
-        TAG=${{ steps.tag.outputs.image_tag }}
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/auth-api:$TAG ./auth-api
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/auth-api:$TAG
+      # Build auth-api (Go)
+      - name: Build auth-api
+        run: |
+          TAG=${{ steps.tag.outputs.image_tag }}
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/auth-service:$TAG ./auth-api
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/auth-service:$TAG
 
-    # Build todos-api (Node.js)
-    - name: Build todos-api
-      run: |
-        TAG=${{ steps.tag.outputs.image_tag }}
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/todos-api:$TAG ./todos-api
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/todos-api:$TAG
+      # Build todos-api (Node.js)
+      - name: Build todos-api
+        run: |
+          TAG=${{ steps.tag.outputs.image_tag }}
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/todos-service:$TAG ./todos-api
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/todos-service:$TAG
 
-    # Build frontend (Vue.js) - using pre-built folder
-    - name: Build frontend
-      run: |
-        echo "⚠️ Using pre-built 'build' folder from repo"
-        if [ ! -d "frontend/build" ]; then
-          echo "❌ Pre-built folder 'build' not found in ./frontend/"
-          ls -la frontend/
-          exit 1
-        fi
-        TAG=${{ steps.tag.outputs.image_tag }}
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/frontend:$TAG ./frontend
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/frontend:$TAG
+      # Build frontend (Vue.js) - using pre-built folder
+      - name: Build frontend
+        run: |
+          echo "⚠️ Using pre-built 'build' folder from repo"
+          if [ ! -d "frontend/build" ]; then
+            echo "❌ Pre-built folder 'build' not found in ./frontend/"
+            ls -la frontend/
+            exit 1
+          fi
+          TAG=${{ steps.tag.outputs.image_tag }}
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/frontend:$TAG ./frontend
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/frontend:$TAG
 
-    # Build log-message-processor (Python)
-    - name: Build log-message-processor
-      run: |
-        TAG=${{ steps.tag.outputs.image_tag }}
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:$TAG ./log-message-processor
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:$TAG
+      # Build log-message-processor (Python)
+      - name: Build log-message-processor
+        run: |
+          TAG=${{ steps.tag.outputs.image_tag }}
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:$TAG ./log-message-processor
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:$TAG
 
   # Job para desplegar infraestructura de producción
   deploy-infrastructure:
@@ -172,93 +177,93 @@ jobs:
     timeout-minutes: 30
     needs: [pre-deployment-checks, build-production-images]
     environment: production
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: |
-          {
-            "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
-            "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
-            "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
-            "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-          }
-          
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: 1.5.7
-        
-    - name: Terraform Init
-      run: |
-        echo "🔑 Initializing Terraform with remote backend..."
-        terraform init -upgrade
-      working-directory: ./terraform
-      env:
-        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      
-    - name: Terraform Plan
-      id: plan
-      run: |
-        echo "📋 Generating execution plan..."
-        TAG=${{ needs.build-production-images.outputs.image_tag }}
-        terraform plan \
-          -var="location=centralus" \
-          -var="resource_group_location=centralus" \
-          -var="db_location=centralus" \
-          -var="subscriptionId=${{ env.AZURE_SUBSCRIPTION_ID }}" \
-          -var="client_id=${{ env.AZURE_CLIENT_ID }}" \
-          -var="client_secret=${{ env.AZURE_CLIENT_SECRET }}" \
-          -var="tenant_id=${{ env.AZURE_TENANT_ID }}" \
-          -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
-          -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
-          -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-api:${TAG}" \
-          -var="auth_api_image=${{ secrets.DOCKERHUB_USERNAME }}/auth-api:${TAG}" \
-          -var="todos_api_image=${{ secrets.DOCKERHUB_USERNAME }}/todos-api:${TAG}" \
-          -var="frontend_image=${{ secrets.DOCKERHUB_USERNAME }}/frontend:${TAG}" \
-          -var="log_processor_image=${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:${TAG}" \
-          -out=tfplan
-      working-directory: ./terraform
-      env:
-        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Show Plan (for review)
-      run: |
-        echo "🔍 PLAN PREVIEW:"
-        terraform show tfplan
-      working-directory: ./terraform
-      env:
-        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            }
 
-    - name: Terraform Apply
-      if: steps.plan.outcome == 'success' && github.ref == 'refs/heads/master'
-      run: |
-        echo "🚀 Applying infrastructure changes..."
-        terraform apply -input=false -auto-approve tfplan
-      working-directory: ./terraform
-      env:
-        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
 
-    - name: Cleanup
-      if: always()
-      run: rm -f tfplan
-      working-directory: ./terraform
+      - name: Terraform Init
+        run: |
+          echo "🔑 Initializing Terraform with remote backend..."
+          terraform init -upgrade
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          echo "📋 Generating execution plan..."
+          TAG=${{ needs.build-production-images.outputs.image_tag }}
+          terraform plan \
+            -var="location=centralus" \
+            -var="resource_group_location=centralus" \
+            -var="db_location=centralus" \
+            -var="subscriptionId=${{ env.AZURE_SUBSCRIPTION_ID }}" \
+            -var="client_id=${{ env.AZURE_CLIENT_ID }}" \
+            -var="client_secret=${{ env.AZURE_CLIENT_SECRET }}" \
+            -var="tenant_id=${{ env.AZURE_TENANT_ID }}" \
+            -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
+            -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
+            -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-service:${TAG}" \
+            -var="auth_api_image=${{ secrets.DOCKERHUB_USERNAME }}/auth-service:${TAG}" \
+            -var="todos_api_image=${{ secrets.DOCKERHUB_USERNAME }}/todos-service:${TAG}" \
+            -var="frontend_image=${{ secrets.DOCKERHUB_USERNAME }}/frontend:${TAG}" \
+            -var="log_processor_image=${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:${TAG}" \
+            -out=tfplan
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Show Plan (for review)
+        run: |
+          echo "🔍 PLAN PREVIEW:"
+          terraform show tfplan
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Apply
+        if: steps.plan.outcome == 'success' && github.ref == 'refs/heads/master'
+        run: |
+          echo "🚀 Applying infrastructure changes..."
+          terraform apply -input=false -auto-approve tfplan
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Cleanup
+        if: always()
+        run: rm -f tfplan
+        working-directory: ./terraform
 
   # Job para notificaciones
   notify-deployment:
@@ -266,24 +271,24 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-production-images, deploy-infrastructure]
     if: always()
-    
+
     steps:
-    - name: Notify Success
-      if: needs.deploy-infrastructure.result == 'success'
-      run: |
-        TAG=${{ needs.build-production-images.outputs.image_tag }}
-        echo "✅ Production deployment completed successfully!"
-        echo "🚀 Services are now running in production"
-        echo "🔗 Images deployed with tag: $TAG"
-        echo "🔗 Users API: ${{ secrets.DOCKERHUB_USERNAME }}/users-api:$TAG"
-        echo "🔗 Auth API: ${{ secrets.DOCKERHUB_USERNAME }}/auth-api:$TAG"
-        echo "🔗 Todos API: ${{ secrets.DOCKERHUB_USERNAME }}/todos-api:$TAG"
-        echo "🔗 Frontend: ${{ secrets.DOCKERHUB_USERNAME }}/frontend:$TAG"
-        echo "🔗 Log Processor: ${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:$TAG"
-        
-    - name: Notify Failure
-      if: needs.deploy-infrastructure.result == 'failure'
-      run: |
-        echo "❌ Production deployment failed!"
-        echo "🔍 Check the logs for more details"
-        exit 1
+      - name: Notify Success
+        if: needs.deploy-infrastructure.result == 'success'
+        run: |
+          TAG=${{ needs.build-production-images.outputs.image_tag }}
+          echo "✅ Production deployment completed successfully!"
+          echo "🚀 Services are now running in production"
+          echo "🔗 Images deployed with tag: $TAG"
+          echo "🔗 Users API: ${{ secrets.DOCKERHUB_USERNAME }}/users-service:$TAG"
+          echo "🔗 Auth API: ${{ secrets.DOCKERHUB_USERNAME }}/auth-service:$TAG"
+          echo "🔗 Todos API: ${{ secrets.DOCKERHUB_USERNAME }}/todos-service:$TAG"
+          echo "🔗 Frontend: ${{ secrets.DOCKERHUB_USERNAME }}/frontend:$TAG"
+          echo "🔗 Log Processor: ${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:$TAG"
+
+      - name: Notify Failure
+        if: needs.deploy-infrastructure.result == 'failure'
+        run: |
+          echo "❌ Production deployment failed!"
+          echo "🔍 Check the logs for more details"
+          exit 1
