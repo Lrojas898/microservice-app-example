@@ -2,7 +2,7 @@
 FROM maven:3.8-openjdk-8 AS build
 WORKDIR /build
 COPY . .
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 # Usar Java 8 LTS
 FROM openjdk:8-jdk-slim
