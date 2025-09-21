@@ -23,7 +23,7 @@ resource "azurerm_container_group" "auth" {
       DB_HOST        = azurerm_postgresql_flexible_server.auth.fqdn
       DB_NAME        = "authdb"
       DB_USER        = azurerm_postgresql_flexible_server.auth.administrator_login
-      DB_PASSWORD    = var.postgres_auth_password
+      DB_PASSWORD    = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
       REDIS_HOST     = module.security.redis_cache_hostname
       REDIS_PORT     = "6380"
       REDIS_PASSWORD = module.security.redis_cache_primary_key
@@ -66,7 +66,7 @@ resource "azurerm_container_group" "users" {
       SERVER_PORT                = "8083"
       SPRING_DATASOURCE_URL      = "jdbc:postgresql://${azurerm_postgresql_flexible_server.users.fqdn}:5432/usersdb"
       SPRING_DATASOURCE_USERNAME = azurerm_postgresql_flexible_server.users.administrator_login
-      SPRING_DATASOURCE_PASSWORD = var.postgres_users_password
+      SPRING_DATASOURCE_PASSWORD = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
       SPRING_REDIS_HOST          = module.security.redis_cache_hostname
       SPRING_REDIS_PORT          = "6380"
       SPRING_REDIS_PASSWORD      = module.security.redis_cache_primary_key
@@ -110,7 +110,7 @@ resource "azurerm_container_group" "todos" {
       DB_HOST        = azurerm_postgresql_flexible_server.todos.fqdn
       DB_NAME        = "todosdb"
       DB_USER        = azurerm_postgresql_flexible_server.todos.administrator_login
-      DB_PASSWORD    = var.postgres_todos_password
+      DB_PASSWORD    = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
       REDIS_HOST     = module.security.redis_cache_hostname
       REDIS_PORT     = "6380"
       REDIS_PASSWORD = module.security.redis_cache_primary_key

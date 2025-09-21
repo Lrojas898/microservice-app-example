@@ -235,10 +235,163 @@ resource "azurerm_network_security_group" "gateway" {
   }
 }
 
+# Network Security Group for Auth Container
+resource "azurerm_network_security_group" "auth_container" {
+  name                = "auth-container-nsg"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+
+  # Allow HTTP traffic from Application Gateway subnet to auth containers
+  security_rule {
+    name                       = "AllowAppGatewayToAuth"
+    priority                   = 1000
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8000"
+    source_address_prefix      = var.gateway_subnet_prefix
+    destination_address_prefix = var.auth_container_subnet_prefix
+  }
+
+  # Allow traffic from frontend containers to auth service
+  security_rule {
+    name                       = "AllowFrontendToAuth"
+    priority                   = 1100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8000"
+    source_address_prefix      = var.frontend_container_subnet_prefix
+    destination_address_prefix = var.auth_container_subnet_prefix
+  }
+
+  # Allow outbound traffic for database and external connections
+  security_rule {
+    name                       = "AllowOutbound"
+    priority                   = 2000
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
+# Network Security Group for Users Container
+resource "azurerm_network_security_group" "users_container" {
+  name                = "users-container-nsg"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+
+  # Allow HTTP traffic from Application Gateway subnet to users containers
+  security_rule {
+    name                       = "AllowAppGatewayToUsers"
+    priority                   = 1000
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8083"
+    source_address_prefix      = var.gateway_subnet_prefix
+    destination_address_prefix = var.users_container_subnet_prefix
+  }
+
+  # Allow traffic from auth containers to users service
+  security_rule {
+    name                       = "AllowAuthToUsers"
+    priority                   = 1100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8083"
+    source_address_prefix      = var.auth_container_subnet_prefix
+    destination_address_prefix = var.users_container_subnet_prefix
+  }
+
+  # Allow outbound traffic for database and external connections
+  security_rule {
+    name                       = "AllowOutbound"
+    priority                   = 2000
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
+# Network Security Group for Todos Container
+resource "azurerm_network_security_group" "todos_container" {
+  name                = "todos-container-nsg"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+
+  # Allow HTTP traffic from Application Gateway subnet to todos containers
+  security_rule {
+    name                       = "AllowAppGatewayToTodos"
+    priority                   = 1000
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8082"
+    source_address_prefix      = var.gateway_subnet_prefix
+    destination_address_prefix = var.todos_container_subnet_prefix
+  }
+
+  # Allow traffic from frontend containers to todos service
+  security_rule {
+    name                       = "AllowFrontendToTodos"
+    priority                   = 1100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8082"
+    source_address_prefix      = var.frontend_container_subnet_prefix
+    destination_address_prefix = var.todos_container_subnet_prefix
+  }
+
+  # Allow outbound traffic for database and external connections
+  security_rule {
+    name                       = "AllowOutbound"
+    priority                   = 2000
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
 # NSG Associations
 resource "azurerm_subnet_network_security_group_association" "frontend_container" {
   subnet_id                 = azurerm_subnet.frontend_container.id
   network_security_group_id = azurerm_network_security_group.frontend_container.id
+}
+
+resource "azurerm_subnet_network_security_group_association" "auth_container" {
+  subnet_id                 = azurerm_subnet.auth_container.id
+  network_security_group_id = azurerm_network_security_group.auth_container.id
+}
+
+resource "azurerm_subnet_network_security_group_association" "users_container" {
+  subnet_id                 = azurerm_subnet.users_container.id
+  network_security_group_id = azurerm_network_security_group.users_container.id
+}
+
+resource "azurerm_subnet_network_security_group_association" "todos_container" {
+  subnet_id                 = azurerm_subnet.todos_container.id
+  network_security_group_id = azurerm_network_security_group.todos_container.id
 }
 
 resource "azurerm_subnet_network_security_group_association" "gateway" {
