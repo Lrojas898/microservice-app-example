@@ -124,5 +124,5 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
   resource_group_name   = azurerm_resource_group.main.name
   private_dns_zone_name = azurerm_private_dns_zone.postgres.name
   virtual_network_id    = module.network.vnet_id
-  registration_enabled  = false
+  registration_enabled  = true
 }
