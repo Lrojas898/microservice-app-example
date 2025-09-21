@@ -8,13 +8,19 @@ resource "random_password" "postgres_auth_password" {
 resource "random_password" "postgres_users_password" {
   count   = var.postgres_users_password == null ? 1 : 0
   length  = 16
-  special = true
+  special = false
+  upper   = true
+  lower   = true
+  numeric = true
 }
 
 resource "random_password" "postgres_todos_password" {
   count   = var.postgres_todos_password == null ? 1 : 0
   length  = 16
-  special = true
+  special = false
+  upper   = true
+  lower   = true
+  numeric = true
 }
 
 # PostgreSQL Flexible Server para Auth Service
