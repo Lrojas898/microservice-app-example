@@ -1,10 +1,11 @@
 package com.elgris.usersapi.security;
 
+import com.elgris.usersapi.configuration.JwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.GenericFilterBean;
 
@@ -21,8 +22,8 @@ import java.security.Key;
 @Component
 public class JwtAuthenticationFilter extends GenericFilterBean {
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    @Autowired
+    private JwtProperties jwtProperties;
 
     public void doFilter(final ServletRequest req, final ServletResponse res, final FilterChain chain)
             throws IOException, ServletException {
@@ -45,7 +46,7 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
 
             try {
                 // Create a key from the secret that's compatible with JJWT 0.11.x
-                Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+                Key key = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
 
                 final Claims claims = Jwts.parserBuilder()
                         .setSigningKey(key)
