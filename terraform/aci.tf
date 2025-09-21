@@ -19,14 +19,9 @@ resource "azurerm_container_group" "auth" {
     }
 
     environment_variables = {
-      PORT           = "8000"
-      DB_HOST        = azurerm_postgresql_flexible_server.auth.fqdn
-      DB_NAME        = "authdb"
-      DB_USER        = azurerm_postgresql_flexible_server.auth.administrator_login
-      DB_PASSWORD    = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
-      REDIS_HOST     = module.security.redis_cache_hostname
-      REDIS_PORT     = "6380"
-      REDIS_PASSWORD = module.security.redis_cache_primary_key
+      AUTH_API_PORT     = "8000"
+      USERS_API_ADDRESS = "http://${azurerm_container_group.users.ip_address}:8083"
+      JWT_SECRET        = "PRFT"
     }
   }
 
