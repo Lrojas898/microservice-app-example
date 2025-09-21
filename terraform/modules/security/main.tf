@@ -87,11 +87,12 @@ resource "azurerm_application_gateway" "main" {
   }
 
   backend_http_settings {
-    name                  = "frontend-settings"
-    cookie_based_affinity = "Disabled"
-    port                  = 80
-    protocol              = "Http"
-    request_timeout       = 30
+    name                                = "frontend-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = 80
+    protocol                            = "Http"
+    request_timeout                     = 30
+    pick_host_name_from_backend_address = true
 
     # Health probe for frontend
     probe_name = "frontend-probe"
