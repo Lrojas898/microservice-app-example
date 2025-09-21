@@ -1,4 +1,3 @@
-
 # Grupo de recursos principal
 resource "azurerm_resource_group" "main" {
   name     = var.resource_group_name
@@ -33,4 +32,5 @@ module "security" {
   gateway_subnet_id     = module.network.gateway_subnet_id
   vnet_id               = module.network.vnet_id
   frontend_container_ip = azurerm_container_group.frontend.ip_address
+  users_container_ip    = azurerm_container_group.users.ip_address
 }
