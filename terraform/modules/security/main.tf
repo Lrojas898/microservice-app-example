@@ -98,12 +98,13 @@ resource "azurerm_application_gateway" "main" {
   }
 
   probe {
-    name                = "frontend-probe"
-    protocol            = "Http"
-    path                = "/"
-    interval            = 30
-    timeout             = 30
-    unhealthy_threshold = 3
+    name                                      = "frontend-probe"
+    protocol                                  = "Http"
+    path                                      = "/"
+    interval                                  = 30
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
   }
 
   http_listener {
