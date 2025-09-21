@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const jwt = require("express-jwt");
 
+//COMENTARIO DE PRUEBA PIPELINE CORRECTO DEV PARA JS
 const ZIPKIN_URL =
   process.env.ZIPKIN_URL || "http://127.0.0.1:9411/api/v2/spans";
 const {
