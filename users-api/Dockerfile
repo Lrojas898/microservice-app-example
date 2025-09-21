@@ -16,5 +16,5 @@ COPY --from=build /build/target/*.jar users-service.jar
 # Exponer puerto 8083
 EXPOSE 8083
 
-# Comando para ejecutar
-ENTRYPOINT ["java", "-jar", "users-service.jar"]
+# Comando para ejecutar con enhanced logging and debugging
+ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-Dspring.profiles.active=docker", "-Dlogging.level.root=INFO", "-Dlogging.level.com.elgris=DEBUG", "-Dlogging.level.org.springframework=INFO", "-Dlogging.level.org.hibernate=INFO", "-jar", "users-service.jar"]
