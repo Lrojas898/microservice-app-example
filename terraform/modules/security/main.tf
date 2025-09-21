@@ -149,7 +149,7 @@ resource "azurerm_application_gateway" "main" {
   probe {
     name                                      = "users-probe"
     protocol                                  = "Http"
-    path                                      = "/"
+    path                                      = "/health"
     interval                                  = 30
     timeout                                   = 30
     unhealthy_threshold                       = 3

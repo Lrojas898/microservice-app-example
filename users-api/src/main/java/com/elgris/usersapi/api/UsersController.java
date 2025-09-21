@@ -18,6 +18,10 @@ public class UsersController {
     @Autowired
     private UserRepository userRepository;
 
+    @RequestMapping(value = "/health", method = RequestMethod.GET)
+    public String health() {
+        return "Users API is healthy";
+    }
 
     @RequestMapping(value = "/", method = RequestMethod.GET)
     public List<User> getUsers() {
@@ -27,17 +31,17 @@ public class UsersController {
         return response;
     }
 
-    @RequestMapping(value = "/{username}",  method = RequestMethod.GET)
+    @RequestMapping(value = "/{username}", method = RequestMethod.GET)
     public User getUser(HttpServletRequest request, @PathVariable("username") String username) {
 
         Object requestAttribute = request.getAttribute("claims");
-        if((requestAttribute == null) || !(requestAttribute instanceof Claims)){
+        if ((requestAttribute == null) || !(requestAttribute instanceof Claims)) {
             throw new RuntimeException("Did not receive required data from JWT token");
         }
 
         Claims claims = (Claims) requestAttribute;
 
-        if (!username.equalsIgnoreCase((String)claims.get("username"))) {
+        if (!username.equalsIgnoreCase((String) claims.get("username"))) {
             throw new AccessDeniedException("No access for requested entity");
         }
 
