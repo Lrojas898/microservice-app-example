@@ -16,6 +16,9 @@ COPY build/ ./build/
 COPY config/ ./config/
 COPY static/ ./static/
 COPY index.html ./
+COPY .eslintrc.js ./
+COPY .babelrc ./
+COPY .postcssrc.js ./
 
 # Construir la aplicación
 RUN npm run build
