@@ -90,9 +90,9 @@ jobs:
         echo "🔍 Installing dependencies and validating Node.js syntax..."
         npm install
         # Validar sintaxis de archivos JavaScript principales
-        node -c app.js || { echo "❌ Syntax error in app.js"; exit 1; }
-        if [ -f "server.js" ]; then
-          node -c server.js || { echo "❌ Syntax error in server.js"; exit 1; }
+        node -c server.js || { echo "❌ Syntax error in server.js"; exit 1; }
+        if [ -f "routes.js" ]; then
+          node -c routes.js || { echo "❌ Syntax error in routes.js"; exit 1; }
         fi
         # Validar archivos en routes/ si existen
         if [ -d "routes" ]; then
