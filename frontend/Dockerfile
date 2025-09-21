@@ -48,11 +48,13 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'echo "=== Testing Backend Connectivity ==="' >> /docker-entrypoint.sh && \
     echo 'if [ -n "$AUTH_API_ADDRESS" ]; then' >> /docker-entrypoint.sh && \
     echo '  echo "Testing auth API: $AUTH_API_ADDRESS"' >> /docker-entrypoint.sh && \
-    echo '  wget -q --timeout=5 --tries=1 "$AUTH_API_ADDRESS/health" -O- 2>/dev/null && echo "Auth API: OK" || echo "Auth API: FAIL"' >> /docker-entrypoint.sh && \
+    echo '  wget -q --timeout=5 --tries=1 "$AUTH_API_ADDRESS" -O- 2>/dev/null && echo "Auth API: OK" || echo "Auth API: FAIL - trying /health"' >> /docker-entrypoint.sh && \
+    echo '  wget -q --timeout=5 --tries=1 "$AUTH_API_ADDRESS/health" -O- 2>/dev/null && echo "Auth API /health: OK" || echo "Auth API /health: FAIL"' >> /docker-entrypoint.sh && \
     echo 'fi' >> /docker-entrypoint.sh && \
     echo 'if [ -n "$TODOS_API_ADDRESS" ]; then' >> /docker-entrypoint.sh && \
     echo '  echo "Testing todos API: $TODOS_API_ADDRESS"' >> /docker-entrypoint.sh && \
-    echo '  wget -q --timeout=5 --tries=1 "$TODOS_API_ADDRESS/health" -O- 2>/dev/null && echo "Todos API: OK" || echo "Todos API: FAIL"' >> /docker-entrypoint.sh && \
+    echo '  wget -q --timeout=5 --tries=1 "$TODOS_API_ADDRESS" -O- 2>/dev/null && echo "Todos API: OK" || echo "Todos API: FAIL - trying /todos"' >> /docker-entrypoint.sh && \
+    echo '  wget -q --timeout=5 --tries=1 "$TODOS_API_ADDRESS/todos" -O- 2>/dev/null && echo "Todos API /todos: OK" || echo "Todos API /todos: FAIL"' >> /docker-entrypoint.sh && \
     echo 'fi' >> /docker-entrypoint.sh && \
     echo 'echo ""' >> /docker-entrypoint.sh && \
     echo 'echo "=== File System Check ==="' >> /docker-entrypoint.sh && \
