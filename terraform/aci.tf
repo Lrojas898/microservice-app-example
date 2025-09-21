@@ -60,7 +60,7 @@ resource "azurerm_container_group" "users" {
     environment_variables = {
       SERVER_PORT                = "8083"
       JWT_SECRET                 = "PRFT"
-      SPRING_DATASOURCE_URL      = "jdbc:postgresql://${azurerm_postgresql_flexible_server.users.name}.postgres.database.azure.com:5432/usersdb?sslmode=require"
+      SPRING_DATASOURCE_URL      = "jdbc:postgresql://${azurerm_postgresql_flexible_server.users.name}.privatelink.postgres.database.azure.com:5432/usersdb?sslmode=require"
       SPRING_DATASOURCE_USERNAME = azurerm_postgresql_flexible_server.users.administrator_login
       SPRING_DATASOURCE_PASSWORD = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
       SPRING_REDIS_HOST          = module.security.redis_cache_hostname
@@ -103,7 +103,7 @@ resource "azurerm_container_group" "todos" {
 
     environment_variables = {
       PORT           = "8082"
-      DB_HOST        = "${azurerm_postgresql_flexible_server.todos.name}.postgres.database.azure.com"
+      DB_HOST        = "${azurerm_postgresql_flexible_server.todos.name}.privatelink.postgres.database.azure.com"
       DB_NAME        = "todosdb"
       DB_USER        = azurerm_postgresql_flexible_server.todos.administrator_login
       DB_PASSWORD    = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
