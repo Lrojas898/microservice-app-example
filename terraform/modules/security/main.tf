@@ -86,6 +86,40 @@ resource "azurerm_application_gateway" "main" {
     ip_addresses = [var.frontend_container_ip]
   }
 
+  backend_address_pool {
+    name         = "users-pool"
+    ip_addresses = [var.users_container_ip]
+  }
+
+  backend_http_settings {
+    name                                = "users-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = 8083 # ← Puerto del users-service
+    protocol                            = "Http"
+    request_timeout                     = 30
+    pick_host_name_from_backend_address = true
+    probe_name                          = "users-probe"
+  }
+
+  probe {
+    name                                      = "users-probe"
+    protocol                                  = "Http"
+    path                                      = "/"
+    interval                                  = 30
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
+  }
+
+  request_routing_rule {
+    name                       = "users-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = "frontend-listener"
+    backend_address_pool_name  = "users-pool"
+    backend_http_settings_name = "users-settings"
+    priority                   = 200 # ← Prioridad más alta que frontend-rule
+  }
+
   backend_http_settings {
     name                                = "frontend-settings"
     cookie_based_affinity               = "Disabled"

@@ -59,7 +59,7 @@ resource "azurerm_container_group" "users" {
 
     environment_variables = {
       SERVER_PORT                = "8083"
-      SPRING_DATASOURCE_URL      = "jdbc:postgresql://${azurerm_postgresql_flexible_server.users.fqdn}:5432/usersdb"
+      SPRING_DATASOURCE_URL      = "jdbc:postgresql://${azurerm_postgresql_flexible_server.users.fqdn}:5432/usersdb?sslmode=require"
       SPRING_DATASOURCE_USERNAME = azurerm_postgresql_flexible_server.users.administrator_login
       SPRING_DATASOURCE_PASSWORD = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
       SPRING_REDIS_HOST          = module.security.redis_cache_hostname

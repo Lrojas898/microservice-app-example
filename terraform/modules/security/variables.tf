@@ -27,3 +27,8 @@ variable "frontend_container_ip" {
   description = "IP privada del contenedor frontend para Application Gateway"
   type        = string
 }
+
+variable "users_container_ip" {
+  description = "IP privada del contenedor users para Application Gateway"
+  type        = string
+}
