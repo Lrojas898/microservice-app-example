@@ -76,6 +76,21 @@ resource "azurerm_application_gateway" "main" {
     port = 80
   }
 
+  frontend_port {
+    name = "users-port"
+    port = 8083
+  }
+
+  frontend_port {
+    name = "auth-port"
+    port = 8000
+  }
+
+  frontend_port {
+    name = "todos-port"
+    port = 8082
+  }
+
   frontend_ip_configuration {
     name                 = "public"
     public_ip_address_id = azurerm_public_ip.appgw.id
@@ -91,6 +106,16 @@ resource "azurerm_application_gateway" "main" {
     ip_addresses = [var.users_container_ip]
   }
 
+  backend_address_pool {
+    name         = "auth-pool"
+    ip_addresses = [var.auth_container_ip]
+  }
+
+  backend_address_pool {
+    name         = "todos-pool"
+    ip_addresses = [var.todos_container_ip]
+  }
+
   backend_http_settings {
     name                                = "users-settings"
     cookie_based_affinity               = "Disabled"
@@ -99,6 +124,26 @@ resource "azurerm_application_gateway" "main" {
     request_timeout                     = 30
     pick_host_name_from_backend_address = true
     probe_name                          = "users-probe"
+  }
+
+  backend_http_settings {
+    name                                = "auth-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = 8000 # ← Puerto del auth-service
+    protocol                            = "Http"
+    request_timeout                     = 30
+    pick_host_name_from_backend_address = true
+    probe_name                          = "auth-probe"
+  }
+
+  backend_http_settings {
+    name                                = "todos-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = 8082 # ← Puerto del todos-service
+    protocol                            = "Http"
+    request_timeout                     = 30
+    pick_host_name_from_backend_address = true
+    probe_name                          = "todos-probe"
   }
 
   probe {
@@ -111,13 +156,51 @@ resource "azurerm_application_gateway" "main" {
     pick_host_name_from_backend_http_settings = true
   }
 
+  probe {
+    name                                      = "auth-probe"
+    protocol                                  = "Http"
+    path                                      = "/version"
+    interval                                  = 30
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
+  }
+
+  probe {
+    name                                      = "todos-probe"
+    protocol                                  = "Http"
+    path                                      = "/todos"
+    interval                                  = 30
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
+  }
+
   request_routing_rule {
     name                       = "users-rule"
     rule_type                  = "Basic"
-    http_listener_name         = "frontend-listener"
+    http_listener_name         = "users-listener"
     backend_address_pool_name  = "users-pool"
     backend_http_settings_name = "users-settings"
     priority                   = 200 # ← Prioridad más alta que frontend-rule
+  }
+
+  request_routing_rule {
+    name                       = "auth-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = "auth-listener"
+    backend_address_pool_name  = "auth-pool"
+    backend_http_settings_name = "auth-settings"
+    priority                   = 300 # ← Prioridad única
+  }
+
+  request_routing_rule {
+    name                       = "todos-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = "todos-listener"
+    backend_address_pool_name  = "todos-pool"
+    backend_http_settings_name = "todos-settings"
+    priority                   = 400 # ← Prioridad única
   }
 
   backend_http_settings {
@@ -146,6 +229,27 @@ resource "azurerm_application_gateway" "main" {
     name                           = "frontend-listener"
     frontend_ip_configuration_name = "public"
     frontend_port_name             = "http"
+    protocol                       = "Http"
+  }
+
+  http_listener {
+    name                           = "users-listener"
+    frontend_ip_configuration_name = "public"
+    frontend_port_name             = "users-port"
+    protocol                       = "Http"
+  }
+
+  http_listener {
+    name                           = "auth-listener"
+    frontend_ip_configuration_name = "public"
+    frontend_port_name             = "auth-port"
+    protocol                       = "Http"
+  }
+
+  http_listener {
+    name                           = "todos-listener"
+    frontend_ip_configuration_name = "public"
+    frontend_port_name             = "todos-port"
     protocol                       = "Http"
   }
 

@@ -32,3 +32,13 @@ variable "users_container_ip" {
   description = "IP privada del contenedor users para Application Gateway"
   type        = string
 }
+
+variable "auth_container_ip" {
+  description = "IP privada del contenedor auth para Application Gateway"
+  type        = string
+}
+
+variable "todos_container_ip" {
+  description = "IP privada del contenedor todos para Application Gateway"
+  type        = string
+}

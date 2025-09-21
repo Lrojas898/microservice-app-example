@@ -33,4 +33,6 @@ module "security" {
   vnet_id               = module.network.vnet_id
   frontend_container_ip = azurerm_container_group.frontend.ip_address
   users_container_ip    = azurerm_container_group.users.ip_address
+  auth_container_ip     = azurerm_container_group.auth.ip_address
+  todos_container_ip    = azurerm_container_group.todos.ip_address
 }
