@@ -21,9 +21,9 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 RUN chown appuser:appuser app.jar
 USER appuser
 
-# Health check
+# Health check - use actuator health endpoint (permitted in security config)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8083/health || exit 1
+  CMD curl -f http://localhost:8083/actuator/health || exit 1
 
 # Enhanced JVM settings for Java 8 and containers
 ENTRYPOINT ["java", \

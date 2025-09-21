@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -102,15 +102,15 @@ public class UsersController {
 
         Object requestAttribute = request.getAttribute("claims");
         if ((requestAttribute == null) || !(requestAttribute instanceof Claims)) {
-            logger.error("Did not receive required JWT claims for user: {}", username);
-            throw new RuntimeException("Did not receive required data from JWT token");
+            logger.warn("Missing or invalid JWT claims for user: {}", username);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid authentication token");
         }
 
         Claims claims = (Claims) requestAttribute;
 
         if (!username.equalsIgnoreCase((String) claims.get("username"))) {
             logger.warn("Access denied for user: {} requesting: {}", claims.get("username"), username);
-            throw new AccessDeniedException("No access for requested entity");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No access for requested entity");
         }
 
         try {

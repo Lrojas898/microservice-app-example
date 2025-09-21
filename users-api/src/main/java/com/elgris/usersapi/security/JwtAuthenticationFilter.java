@@ -39,7 +39,9 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
         } else {
 
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                throw new ServletException("Missing or invalid Authorization header");
+                // Return 401 instead of throwing to avoid surfacing as 500 to clients
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing or invalid Authorization header");
+                return;
             }
 
             final String token = authHeader.substring(7);
@@ -55,9 +57,13 @@ public class JwtAuthenticationFilter extends GenericFilterBean {
                         .getBody();
                 request.setAttribute("claims", claims);
             } catch (final SignatureException e) {
-                throw new ServletException("Invalid token");
+                // Invalid signature -> 401
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+                return;
             } catch (final Exception e) {
-                throw new ServletException("Token processing error: " + e.getMessage());
+                // Any other token parsing/validation error -> 401
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token processing error: " + e.getMessage());
+                return;
             }
 
             chain.doFilter(req, res);
