@@ -1,6 +1,6 @@
 package main
 
-//COMENTARIO DE PRUEBA MEJORA DE JWT
+//COmentario de prueba JWT
 import (
 	"encoding/json"
 	"log"
