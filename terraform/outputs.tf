@@ -39,27 +39,33 @@ output "redis_cache_primary_key" {
   sensitive = true
 }
 
-# Outputs para Key Vault y contraseñas
-output "key_vault_name" {
-  value = azurerm_key_vault.main.name
-}
+# Outputs para Key Vault - TEMPORALMENTE COMENTADOS debido a problemas de permisos
+# output "key_vault_name" {
+#   value = azurerm_key_vault.main.name
+# }
 
-output "key_vault_uri" {
-  value = azurerm_key_vault.main.vault_uri
+# output "key_vault_uri" {
+#   value = azurerm_key_vault.main.vault_uri
+# }
+
+# Outputs para contraseñas consolidadas
+output "postgres_consolidated_password" {
+  value     = random_password.postgres_consolidated_password.result
+  sensitive = true
 }
 
 output "postgres_auth_password" {
-  value     = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
+  value     = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_consolidated_password.result
   sensitive = true
 }
 
 output "postgres_users_password" {
-  value     = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
+  value     = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_consolidated_password.result
   sensitive = true
 }
 
 output "postgres_todos_password" {
-  value     = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
+  value     = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_consolidated_password.result
   sensitive = true
 }
 

@@ -1,16 +1,19 @@
-# Azure Cache for Redis
+
+# Optimización de Costos: Application Gateway y Redis más económicos
+# Ahorro estimado: ~40% en componentes de red y cache
+
+# Azure Cache for Redis - Versión básica
 resource "azurerm_redis_cache" "main" {
-  name                = "microservice-redis"
+  name                = "microservice-redis-${var.unique_suffix}"
   location            = var.location
   resource_group_name = var.resource_group_name
-  capacity            = 2
-  family              = "C"
-  sku_name            = "Standard"
-  # non_ssl_port_enabled no es soportado en versiones recientes; se mantiene acceso SSL por defecto
+  capacity            = 0       # Reducido de 2 a 0 (250MB)
+  family              = "C"     # Basic cache family
+  sku_name            = "Basic" # Cambiado de Standard a Basic
   minimum_tls_version = "1.2"
 }
 
-# --- Redis Private Endpoint and DNS ---
+# --- Redis Private Endpoint and DNS (Mantener para seguridad) ---
 resource "azurerm_private_endpoint" "redis" {
   name                = "redis-pe"
   location            = var.location
@@ -54,7 +57,7 @@ resource "azurerm_public_ip" "appgw" {
   sku                 = "Standard"
 }
 
-# Application Gateway
+# Application Gateway - Configuración más económica
 resource "azurerm_application_gateway" "main" {
   name                = "microservice-appgw"
   resource_group_name = var.resource_group_name
@@ -63,7 +66,7 @@ resource "azurerm_application_gateway" "main" {
   sku {
     name     = "Standard_v2"
     tier     = "Standard_v2"
-    capacity = 2
+    capacity = 1 # Reducido de 2 a 1 instancia
   }
 
   gateway_ip_configuration {
@@ -119,7 +122,7 @@ resource "azurerm_application_gateway" "main" {
   backend_http_settings {
     name                                = "users-settings"
     cookie_based_affinity               = "Disabled"
-    port                                = 8083 # ← Puerto del users-service
+    port                                = 8083
     protocol                            = "Http"
     request_timeout                     = 30
     pick_host_name_from_backend_address = true
@@ -129,7 +132,7 @@ resource "azurerm_application_gateway" "main" {
   backend_http_settings {
     name                                = "auth-settings"
     cookie_based_affinity               = "Disabled"
-    port                                = 8000 # ← Puerto del auth-service
+    port                                = 8000
     protocol                            = "Http"
     request_timeout                     = 30
     pick_host_name_from_backend_address = true
@@ -139,68 +142,11 @@ resource "azurerm_application_gateway" "main" {
   backend_http_settings {
     name                                = "todos-settings"
     cookie_based_affinity               = "Disabled"
-    port                                = 8082 # ← Puerto del todos-service
+    port                                = 8082
     protocol                            = "Http"
     request_timeout                     = 30
     pick_host_name_from_backend_address = true
     probe_name                          = "todos-probe"
-  }
-
-  probe {
-    name                                      = "users-probe"
-    protocol                                  = "Http"
-    path                                      = "/users/health"
-    interval                                  = 30
-    timeout                                   = 30
-    unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = true
-  }
-
-  probe {
-    name                                      = "auth-probe"
-    protocol                                  = "Http"
-    path                                      = "/version"
-    interval                                  = 30
-    timeout                                   = 30
-    unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = true
-  }
-
-  probe {
-    name                                      = "todos-probe"
-    protocol                                  = "Http"
-    path                                      = "/health"
-    interval                                  = 30
-    timeout                                   = 30
-    unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = true
-  }
-
-  request_routing_rule {
-    name                       = "users-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "users-listener"
-    backend_address_pool_name  = "users-pool"
-    backend_http_settings_name = "users-settings"
-    priority                   = 200 # ← Prioridad más alta que frontend-rule
-  }
-
-  request_routing_rule {
-    name                       = "auth-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "auth-listener"
-    backend_address_pool_name  = "auth-pool"
-    backend_http_settings_name = "auth-settings"
-    priority                   = 300 # ← Prioridad única
-  }
-
-  request_routing_rule {
-    name                       = "todos-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "todos-listener"
-    backend_address_pool_name  = "todos-pool"
-    backend_http_settings_name = "todos-settings"
-    priority                   = 400 # ← Prioridad única
   }
 
   backend_http_settings {
@@ -210,16 +156,45 @@ resource "azurerm_application_gateway" "main" {
     protocol                            = "Http"
     request_timeout                     = 30
     pick_host_name_from_backend_address = true
+    probe_name                          = "frontend-probe"
+  }
 
-    # Health probe for frontend
-    probe_name = "frontend-probe"
+  # Health probes con intervalos más largos para reducir overhead
+  probe {
+    name                                      = "users-probe"
+    protocol                                  = "Http"
+    path                                      = "/users/health"
+    interval                                  = 60 # Aumentado de 30 a 60 segundos
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
+  }
+
+  probe {
+    name                                      = "auth-probe"
+    protocol                                  = "Http"
+    path                                      = "/version"
+    interval                                  = 60 # Aumentado de 30 a 60 segundos
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
+  }
+
+  probe {
+    name                                      = "todos-probe"
+    protocol                                  = "Http"
+    path                                      = "/health"
+    interval                                  = 60 # Aumentado de 30 a 60 segundos
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
   }
 
   probe {
     name                                      = "frontend-probe"
     protocol                                  = "Http"
     path                                      = "/"
-    interval                                  = 30
+    interval                                  = 60 # Aumentado de 30 a 60 segundos
     timeout                                   = 30
     unhealthy_threshold                       = 3
     pick_host_name_from_backend_http_settings = true
@@ -261,10 +236,36 @@ resource "azurerm_application_gateway" "main" {
     backend_http_settings_name = "frontend-settings"
     priority                   = 100
   }
+
+  request_routing_rule {
+    name                       = "users-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = "users-listener"
+    backend_address_pool_name  = "users-pool"
+    backend_http_settings_name = "users-settings"
+    priority                   = 200
+  }
+
+  request_routing_rule {
+    name                       = "auth-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = "auth-listener"
+    backend_address_pool_name  = "auth-pool"
+    backend_http_settings_name = "auth-settings"
+    priority                   = 300
+  }
+
+  request_routing_rule {
+    name                       = "todos-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = "todos-listener"
+    backend_address_pool_name  = "todos-pool"
+    backend_http_settings_name = "todos-settings"
+    priority                   = 400
+  }
 }
 
-
-# Log Processor (Logic App) - CORREGIDO
+# Log Processor simplificado (Logic App básico)
 resource "azurerm_logic_app_workflow" "log_processor" {
   name                = "log-message-processor"
   location            = var.location
@@ -272,3 +273,5 @@ resource "azurerm_logic_app_workflow" "log_processor" {
   workflow_schema     = "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#"
   workflow_version    = "1.0.0.0"
 }
+
+

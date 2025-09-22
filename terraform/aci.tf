@@ -1,4 +1,8 @@
-# Auth Service en Azure Container Instance
+
+# Optimización de Costos: Container Groups con recursos reducidos
+# Ahorro estimado: ~50% en costos de contenedores
+
+# Auth Service - Recursos reducidos
 resource "azurerm_container_group" "auth" {
   name                = "auth-service"
   location            = var.location
@@ -10,8 +14,8 @@ resource "azurerm_container_group" "auth" {
   container {
     name   = "auth-container"
     image  = var.auth_api_image
-    cpu    = "1"
-    memory = "1.5"
+    cpu    = "0.5" # Reducido de 1 a 0.5
+    memory = "1"   # Reducido de 1.5 a 1GB
 
     ports {
       port     = 8000
@@ -33,11 +37,11 @@ resource "azurerm_container_group" "auth" {
 
   depends_on = [
     module.network,
-    azurerm_postgresql_flexible_server.auth
+    azurerm_postgresql_flexible_server.consolidated
   ]
 }
 
-# Users Service en Azure Container Instance
+# Users Service - Recursos reducidos
 resource "azurerm_container_group" "users" {
   name                = "users-service"
   location            = var.location
@@ -49,8 +53,8 @@ resource "azurerm_container_group" "users" {
   container {
     name   = "users-container"
     image  = var.users_api_image
-    cpu    = "1"
-    memory = "1.5"
+    cpu    = "0.5" # Reducido de 1 a 0.5
+    memory = "1"   # Reducido de 1.5 a 1GB
 
     ports {
       port     = 8083
@@ -58,11 +62,12 @@ resource "azurerm_container_group" "users" {
     }
 
     environment_variables = {
-      SERVER_PORT                = "8083"
-      JWT_SECRET                 = "PRFT"
-      SPRING_DATASOURCE_URL      = "jdbc:postgresql://${azurerm_postgresql_flexible_server.users.name}.privatelink.postgres.database.azure.com:5432/usersdb?sslmode=require"
-      SPRING_DATASOURCE_USERNAME = azurerm_postgresql_flexible_server.users.administrator_login
-      SPRING_DATASOURCE_PASSWORD = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
+      SERVER_PORT = "8083"
+      JWT_SECRET  = "PRFT"
+      # Conexión al servidor consolidado
+      SPRING_DATASOURCE_URL      = "jdbc:postgresql://${azurerm_postgresql_flexible_server.consolidated.name}.privatelink.postgres.database.azure.com:5432/usersdb?sslmode=require"
+      SPRING_DATASOURCE_USERNAME = azurerm_postgresql_flexible_server.consolidated.administrator_login
+      SPRING_DATASOURCE_PASSWORD = random_password.postgres_consolidated_password.result
       SPRING_REDIS_HOST          = module.security.redis_cache_hostname
       SPRING_REDIS_PORT          = "6380"
       SPRING_REDIS_PASSWORD      = module.security.redis_cache_primary_key
@@ -77,11 +82,11 @@ resource "azurerm_container_group" "users" {
 
   depends_on = [
     module.network,
-    azurerm_postgresql_flexible_server.users
+    azurerm_postgresql_flexible_server.consolidated
   ]
 }
 
-# Todos Service en Azure Container Instance
+# Todos Service - Recursos reducidos
 resource "azurerm_container_group" "todos" {
   name                = "todos-service"
   location            = var.location
@@ -93,8 +98,8 @@ resource "azurerm_container_group" "todos" {
   container {
     name   = "todos-container"
     image  = var.todos_api_image
-    cpu    = "1"
-    memory = "1.5"
+    cpu    = "0.5" # Reducido de 1 a 0.5
+    memory = "1"   # Reducido de 1.5 a 1GB
 
     ports {
       port     = 8082
@@ -102,11 +107,12 @@ resource "azurerm_container_group" "todos" {
     }
 
     environment_variables = {
-      PORT           = "8082"
-      DB_HOST        = "${azurerm_postgresql_flexible_server.todos.name}.privatelink.postgres.database.azure.com"
+      PORT = "8082"
+      # Conexión al servidor consolidado
+      DB_HOST        = "${azurerm_postgresql_flexible_server.consolidated.name}.privatelink.postgres.database.azure.com"
       DB_NAME        = "todosdb"
-      DB_USER        = azurerm_postgresql_flexible_server.todos.administrator_login
-      DB_PASSWORD    = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
+      DB_USER        = azurerm_postgresql_flexible_server.consolidated.administrator_login
+      DB_PASSWORD    = random_password.postgres_consolidated_password.result
       REDIS_HOST     = module.security.redis_cache_hostname
       REDIS_PORT     = "6380"
       REDIS_PASSWORD = module.security.redis_cache_primary_key
@@ -121,11 +127,11 @@ resource "azurerm_container_group" "todos" {
 
   depends_on = [
     module.network,
-    azurerm_postgresql_flexible_server.todos
+    azurerm_postgresql_flexible_server.consolidated
   ]
 }
 
-# Frontend Service en Azure Container Instance
+# Frontend Service - Recursos mínimos (es solo nginx)
 resource "azurerm_container_group" "frontend" {
   name                = "frontend-service"
   location            = var.location
@@ -137,8 +143,8 @@ resource "azurerm_container_group" "frontend" {
   container {
     name   = "frontend-container"
     image  = var.frontend_image
-    cpu    = "1"
-    memory = "1.5"
+    cpu    = "0.25" # Muy reducido para nginx
+    memory = "0.5"  # Muy reducido para nginx
 
     ports {
       port     = 80
@@ -166,9 +172,4 @@ resource "azurerm_container_group" "frontend" {
   ]
 }
 
-# Random strings for unique naming
-resource "random_string" "unique" {
-  length  = 8
-  special = false
-  upper   = false
-}
+

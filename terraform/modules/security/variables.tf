@@ -42,3 +42,8 @@ variable "todos_container_ip" {
   description = "IP privada del contenedor todos para Application Gateway"
   type        = string
 }
+
+variable "unique_suffix" {
+  description = "Sufijo único para nombres de recursos"
+  type        = string
+}

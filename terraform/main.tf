@@ -35,4 +35,12 @@ module "security" {
   users_container_ip    = azurerm_container_group.users.ip_address
   auth_container_ip     = azurerm_container_group.auth.ip_address
   todos_container_ip    = azurerm_container_group.todos.ip_address
+  unique_suffix         = random_string.unique.result
+}
+
+# Random strings for unique naming
+resource "random_string" "unique" {
+  length  = 8
+  special = false
+  upper   = false
 }
