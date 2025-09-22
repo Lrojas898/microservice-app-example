@@ -3,9 +3,9 @@
 
 # Variables globales
 resource_group_name = "microservice-app-rg"
-location = "eastus"
-resource_group_location = "eastus"
-db_location = "eastus"
+location = "eastus2"
+resource_group_location = "eastus2"
+db_location = "eastus2"
 
 # Variables de red
 vnet_address_space = ["10.0.0.0/16"]
