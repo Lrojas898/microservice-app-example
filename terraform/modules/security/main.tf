@@ -4,7 +4,7 @@
 
 # Azure Cache for Redis - Versión básica
 resource "azurerm_redis_cache" "main" {
-  name                = "microservice-redis-${var.unique_suffix}"
+  name                = "microservice-redis-optimized-${var.unique_suffix}"
   location            = var.location
   resource_group_name = var.resource_group_name
   capacity            = 0       # Reducido de 2 a 0 (250MB)

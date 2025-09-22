@@ -71,6 +71,7 @@ resource "azurerm_container_group" "users" {
       SPRING_REDIS_HOST          = module.security.redis_cache_hostname
       SPRING_REDIS_PORT          = "6380"
       SPRING_REDIS_PASSWORD      = module.security.redis_cache_primary_key
+      SPRING_REDIS_SSL           = "true"
     }
   }
 
