@@ -66,7 +66,7 @@ resource "azurerm_container_group" "users" {
       JWT_SECRET  = "PRFT"
       # Conexión al servidor consolidado
       SPRING_DATASOURCE_URL      = "jdbc:postgresql://${azurerm_postgresql_flexible_server.consolidated.name}.privatelink.postgres.database.azure.com:5432/usersdb?sslmode=require"
-      SPRING_DATASOURCE_USERNAME = azurerm_postgresql_flexible_server.consolidated.administrator_login
+      SPRING_DATASOURCE_USERNAME = "${azurerm_postgresql_flexible_server.consolidated.administrator_login}@${azurerm_postgresql_flexible_server.consolidated.name}"
       SPRING_DATASOURCE_PASSWORD = random_password.postgres_consolidated_password.result
       SPRING_REDIS_HOST          = module.security.redis_cache_hostname
       SPRING_REDIS_PORT          = "6380"
