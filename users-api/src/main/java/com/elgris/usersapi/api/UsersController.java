@@ -117,13 +117,17 @@ public class UsersController {
             User user = userRepository.findOneByUsername(username);
             if (user != null) {
                 logger.debug("Successfully fetched user: {}", username);
+                return user;
             } else {
                 logger.warn("User not found: {}", username);
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + username);
             }
-            return user;
+        } catch (ResponseStatusException e) {
+            // Re-throw ResponseStatusException (like NOT_FOUND)
+            throw e;
         } catch (Exception e) {
             logger.error("Error fetching user: {}", username, e);
-            throw e;
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error retrieving user data");
         }
     }
 
