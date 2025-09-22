@@ -176,7 +176,20 @@ resource "azurerm_network_security_group" "frontend_container" {
     destination_address_prefix = "Internet"
   }
 
-  # Allow communication to other container subnets for API calls
+  # Allow outbound communication to backend container subnets for API calls
+  security_rule {
+    name                         = "AllowOutboundToContainerSubnets"
+    priority                     = 1100
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_range            = "*"
+    destination_port_ranges      = ["8000", "8082", "8083"]
+    source_address_prefix        = var.frontend_container_subnet_prefix
+    destination_address_prefixes = [var.auth_container_subnet_prefix, var.users_container_subnet_prefix, var.todos_container_subnet_prefix]
+  }
+
+  # Allow communication to other container subnets for API calls (INBOUND for health checks)
   security_rule {
     name                       = "AllowToContainerSubnets"
     priority                   = 1200
@@ -310,6 +323,19 @@ resource "azurerm_network_security_group" "users_container" {
     source_port_range          = "*"
     destination_port_range     = "8083"
     source_address_prefix      = var.auth_container_subnet_prefix
+    destination_address_prefix = var.users_container_subnet_prefix
+  }
+
+  # Allow traffic from frontend containers to users service
+  security_rule {
+    name                       = "AllowFrontendToUsers"
+    priority                   = 1200
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8083"
+    source_address_prefix      = var.frontend_container_subnet_prefix
     destination_address_prefix = var.users_container_subnet_prefix
   }
 
