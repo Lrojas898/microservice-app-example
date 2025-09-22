@@ -8,19 +8,19 @@ variable "resource_group_name" {
 variable "location" {
   description = "Región de Azure"
   type        = string
-  default     = "eastus"
+  default     = "eastus2"
 }
 
 variable "resource_group_location" {
   description = "Región del Resource Group (no mover si ya existe)"
   type        = string
-  default     = "eastus"
+  default     = "eastus2"
 }
 
 variable "db_location" {
   description = "Región para PostgreSQL Flexible Servers"
   type        = string
-  default     = "eastus"
+  default     = "eastus2"
 }
 
 # Variables para la red virtual
