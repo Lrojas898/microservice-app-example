@@ -148,6 +148,7 @@ resource "azurerm_container_group" "frontend" {
     environment_variables = {
       AUTH_API_ADDRESS  = "http://${azurerm_container_group.auth.ip_address}:8000"
       TODOS_API_ADDRESS = "http://${azurerm_container_group.todos.ip_address}:8082"
+      USERS_API_ADDRESS = "http://${azurerm_container_group.users.ip_address}:8083"
     }
   }
 

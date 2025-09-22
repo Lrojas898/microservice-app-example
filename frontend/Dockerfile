@@ -47,6 +47,7 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'echo "=== Environment Variables ==="' >> /docker-entrypoint.sh && \
     echo 'echo "AUTH_API_ADDRESS: ${AUTH_API_ADDRESS:-NOT_SET}"' >> /docker-entrypoint.sh && \
     echo 'echo "TODOS_API_ADDRESS: ${TODOS_API_ADDRESS:-NOT_SET}"' >> /docker-entrypoint.sh && \
+    echo 'echo "USERS_API_ADDRESS: ${USERS_API_ADDRESS:-NOT_SET}"' >> /docker-entrypoint.sh && \
     echo 'echo ""' >> /docker-entrypoint.sh && \
     echo 'echo "=== Testing Backend Connectivity ==="' >> /docker-entrypoint.sh && \
     echo 'if [ -n "$AUTH_API_ADDRESS" ]; then' >> /docker-entrypoint.sh && \
@@ -70,7 +71,7 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'head -20 /etc/nginx/conf.d/default.conf.template' >> /docker-entrypoint.sh && \
     echo 'echo ""' >> /docker-entrypoint.sh && \
     echo 'echo "Running envsubst..."' >> /docker-entrypoint.sh && \
-    echo 'if envsubst '\''$AUTH_API_ADDRESS $TODOS_API_ADDRESS'\'' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf; then' >> /docker-entrypoint.sh && \
+    echo 'if envsubst '\''$AUTH_API_ADDRESS $TODOS_API_ADDRESS $USERS_API_ADDRESS'\'' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf; then' >> /docker-entrypoint.sh && \
     echo '  echo "envsubst: SUCCESS"' >> /docker-entrypoint.sh && \
     echo 'else' >> /docker-entrypoint.sh && \
     echo '  echo "envsubst: FAILED with exit code $?"' >> /docker-entrypoint.sh && \
