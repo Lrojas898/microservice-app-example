@@ -53,6 +53,15 @@ const recorder = new BatchRecorder({
 const localServiceName = "todos-api";
 const tracer = new Tracer({ ctxImpl, recorder, localServiceName });
 
+// Health check endpoint (before JWT middleware to avoid authentication)
+app.get("/health", function (req, res) {
+  res.status(200).json({
+    status: "UP",
+    service: "todos-api",
+    timestamp: Date.now(),
+  });
+});
+
 app.use(jwt({ secret: jwtSecret }));
 app.use(zipkinMiddleware({ tracer }));
 app.use(function (err, req, res, next) {
