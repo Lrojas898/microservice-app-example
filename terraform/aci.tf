@@ -177,10 +177,10 @@ resource "azurerm_container_group" "frontend" {
       protocol = "TCP"
     }
 
-    # CORRECCIÓN: Usar IPs privadas de los containers directamente
+    # CORRECCIÓN: Usar Application Gateway para ruteo centralizado
     environment_variables = {
-      AUTH_API_ADDRESS  = "http://${azurerm_container_group.auth.ip_address}:8000"
-      TODOS_API_ADDRESS = "http://${azurerm_container_group.todos.ip_address}:8082"
+      AUTH_API_ADDRESS  = "http://${data.azurerm_public_ip.appgw.ip_address}"
+      TODOS_API_ADDRESS = "http://${data.azurerm_public_ip.appgw.ip_address}"
     }
   }
 
