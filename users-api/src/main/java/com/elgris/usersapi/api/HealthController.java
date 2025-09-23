@@ -1,12 +1,12 @@
 package com.elgris.usersapi.api;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 public class HealthController {
@@ -20,4 +20,4 @@ public class HealthController {
 
         return new ResponseEntity<>(healthStatus, HttpStatus.OK);
     }
-}z
+}
