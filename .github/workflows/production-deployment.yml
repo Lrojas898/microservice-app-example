@@ -217,7 +217,7 @@ jobs:
           terraform plan \
             -var="location=eastus2" \
             -var="resource_group_location=eastus2" \
-            -var="db_location=eastus2" \
+            -var="db_location=chilecentral" \
             -var="subscriptionId=${{ env.AZURE_SUBSCRIPTION_ID }}" \
             -var="client_id=${{ env.AZURE_CLIENT_ID }}" \
             -var="client_secret=${{ env.AZURE_CLIENT_SECRET }}" \
