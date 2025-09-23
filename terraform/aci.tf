@@ -83,27 +83,9 @@ resource "azurerm_container_group" "users" {
     }
 
     environment_variables = {
-      USERS_API_PORT                      = "8083"
-      JWT_SECRET                          = "PRFT"
-      REDIS_HOST                          = "${module.security.redis_cache_hostname}"
-      REDIS_PASSWORD                      = "${module.security.redis_cache_primary_key}"
-      REDIS_PORT                          = "6380"
-      SPRING_REDIS_HOST                   = "${module.security.redis_cache_hostname}"
-      SPRING_REDIS_PASSWORD               = "${module.security.redis_cache_primary_key}"
-      SPRING_REDIS_PORT                   = "6380"
-      SPRING_REDIS_SSL                    = "true"
-      DB_HOST                             = "${azurerm_postgresql_flexible_server.consolidated.fqdn}"
-      DB_NAME                             = "usersdb"
-      DB_USER                             = "${azurerm_postgresql_flexible_server.consolidated.administrator_login}"
-      DB_PASSWORD                         = "${azurerm_postgresql_flexible_server.consolidated.administrator_password}"
-      DB_PORT                             = "5432"
-      SPRING_DATASOURCE_URL               = "jdbc:postgresql://${azurerm_postgresql_flexible_server.consolidated.fqdn}:5432/usersdb?sslmode=require"
-      SPRING_DATASOURCE_USERNAME          = "${azurerm_postgresql_flexible_server.consolidated.administrator_login}"
-      SPRING_DATASOURCE_PASSWORD          = "${azurerm_postgresql_flexible_server.consolidated.administrator_password}"
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME = "org.postgresql.Driver"
-      SPRING_JPA_HIBERNATE_DDL_AUTO       = "update"
-      SPRING_JPA_SHOW_SQL                 = "false"
-      SPRING_JPA_DATABASE_PLATFORM        = "org.hibernate.dialect.PostgreSQLDialect"
+      USERS_API_PORT    = "8083"
+      JWT_SECRET        = "PRFT"
+      ZIPKIN_URL        = "http://127.0.0.1:9411/"
     }
   }
 
@@ -114,8 +96,7 @@ resource "azurerm_container_group" "users" {
   }
 
   depends_on = [
-    module.network,
-    azurerm_postgresql_flexible_server.consolidated
+    module.network
   ]
 }
 

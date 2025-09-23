@@ -39,4 +39,7 @@ ENTRYPOINT ["java", \
     "-XX:HeapDumpPath=/tmp/heapdump.hprof", \
     "-Dlogging.level.org.springframework.boot.autoconfigure=INFO", \
     "-Dlogging.level.org.springframework.jdbc.core=INFO", \
+    "-Dspring.datasource.url=jdbc:h2:mem:usersdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE", \
+    "-Dspring.datasource.driver-class-name=org.h2.Driver", \
+    "-Dspring.jpa.database-platform=org.hibernate.dialect.H2Dialect", \
     "-jar", "app.jar"]
