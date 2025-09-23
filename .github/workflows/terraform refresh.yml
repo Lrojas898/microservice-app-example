@@ -7,6 +7,11 @@ on:
   # pull_request:
   #   branches: [ main ]
 
+# Previene ejecuciones concurrentes
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   terraform-refresh:
     runs-on: ubuntu-latest
@@ -29,12 +34,60 @@ jobs:
         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     
-    - name: 🔄 Refresh State (Modern Approach)
+    - name: Force Unlock State (if locked)
       run: |
-        terraform plan -refresh-only \
+        # Intentar obtener el lock ID si existe
+        LOCK_ID=$(terraform plan -no-color 2>&1 | grep -oP 'ID:\s+\K[a-f0-9-]+' | head -1 || echo "")
+        if [ ! -z "$LOCK_ID" ]; then
+          echo "Found lock ID: $LOCK_ID, attempting to unlock..."
+          terraform force-unlock -force "$LOCK_ID"
+        else
+          echo "No active lock found"
+        fi
+      working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      continue-on-error: true
+    
+    - name: 🔄 Refresh State with Auto-Unlock
+      run: |
+        set +e  # No salir inmediatamente si hay error
+        
+        # Intentar refresh
+        terraform refresh \
           -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
-          -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
-          -out=refresh.tfplan
+          -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}"
+        
+        REFRESH_EXIT_CODE=$?
+        
+        # Si falló por lock, intentar unlock y retry
+        if [ $REFRESH_EXIT_CODE -eq 1 ]; then
+          echo "Refresh failed, checking if it's due to state lock..."
+          
+          # Capturar el lock ID del error
+          LOCK_ID=$(terraform refresh -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" 2>&1 | grep -oP 'ID:\s+\K[a-f0-9-]+' | head -1 || echo "")
+          
+          if [ ! -z "$LOCK_ID" ]; then
+            echo "Found lock ID: $LOCK_ID"
+            echo "Attempting to force unlock..."
+            terraform force-unlock -force "$LOCK_ID"
+            
+            if [ $? -eq 0 ]; then
+              echo "Successfully unlocked. Retrying refresh..."
+              terraform refresh \
+                -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
+                -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}"
+              REFRESH_EXIT_CODE=$?
+            fi
+          else
+            echo "No lock ID found in error output"
+          fi
+        fi
+        
+        exit $REFRESH_EXIT_CODE
       working-directory: ./terraform
       env:
         ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -43,12 +96,3 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         TF_VAR_dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
         TF_VAR_dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
-    
-    - name: Apply Refresh Changes
-      run: terraform apply -auto-approve refresh.tfplan
-      working-directory: ./terraform
-      env:
-        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-        ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
