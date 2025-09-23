@@ -161,7 +161,7 @@ resource "azurerm_application_gateway" "main" {
   probe {
     name                                      = "auth-probe"
     protocol                                  = "Http"
-    path                                      = "/health"
+    path                                      = "/version"
     interval                                  = 30
     timeout                                   = 20
     unhealthy_threshold                       = 3
