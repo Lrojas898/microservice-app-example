@@ -226,7 +226,7 @@ resource "azurerm_application_gateway" "main" {
     }
   }
 
-  # UNA SOLA REGLA con PathBasedRouting
+  # TENER UNA SOLA REGLA con PathBasedRouting
   request_routing_rule {
     name               = "main-routing-rule"
     rule_type          = "PathBasedRouting" # CAMBIO CRÍTICO
