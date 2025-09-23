@@ -1,3 +1,8 @@
+# Obtener la IP pública del Application Gateway
+data "azurerm_public_ip" "appgw" {
+  name                = "appgw-public-ip"
+  resource_group_name = var.resource_group_name
+}
 
 # Optimización de Costos: Container Groups con recursos reducidos
 # Ahorro estimado: ~50% en costos de contenedores
@@ -132,7 +137,7 @@ resource "azurerm_container_group" "todos" {
   ]
 }
 
-# Frontend Service - Recursos mínimos (es solo nginx)
+# Frontend Service - CORREGIDO para usar IP pública del Application Gateway
 resource "azurerm_container_group" "frontend" {
   name                = "frontend-service"
   location            = var.location
@@ -152,10 +157,11 @@ resource "azurerm_container_group" "frontend" {
       protocol = "TCP"
     }
 
+    # CORRECCIÓN CRÍTICA: Usar IP pública del Application Gateway en lugar de IPs privadas
     environment_variables = {
-      AUTH_API_ADDRESS  = "http://${azurerm_container_group.auth.ip_address}:8000"
-      TODOS_API_ADDRESS = "http://${azurerm_container_group.todos.ip_address}:8082"
-      USERS_API_ADDRESS = "http://${azurerm_container_group.users.ip_address}:8083"
+      AUTH_API_ADDRESS  = "http://${data.azurerm_public_ip.appgw.ip_address}"
+      TODOS_API_ADDRESS = "http://${data.azurerm_public_ip.appgw.ip_address}"
+      USERS_API_ADDRESS = "http://${data.azurerm_public_ip.appgw.ip_address}"
     }
   }
 
@@ -172,5 +178,3 @@ resource "azurerm_container_group" "frontend" {
     azurerm_container_group.users
   ]
 }
-
-
