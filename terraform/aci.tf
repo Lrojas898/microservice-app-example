@@ -159,9 +159,9 @@ resource "azurerm_container_group" "frontend" {
 
     # CORRECCIÓN CRÍTICA: Usar IP pública del Application Gateway en lugar de IPs privadas
     environment_variables = {
-      AUTH_API_ADDRESS  = "http://${data.azurerm_public_ip.appgw.ip_address}"
-      TODOS_API_ADDRESS = "http://${data.azurerm_public_ip.appgw.ip_address}"
-      USERS_API_ADDRESS = "http://${data.azurerm_public_ip.appgw.ip_address}"
+      AUTH_API_ADDRESS  = data.azurerm_public_ip.appgw.ip_address
+      TODOS_API_ADDRESS = data.azurerm_public_ip.appgw.ip_address
+      USERS_API_ADDRESS = data.azurerm_public_ip.appgw.ip_address
     }
   }
 
