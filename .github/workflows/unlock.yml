@@ -1,15 +1,36 @@
-      - name: Terraform Plan
-        id: plan
-        run: terraform plan ...  # ← Ya lo tienes
+name: Force Unlock Terraform State
 
-      - name: Show Plan (for review)
-        run: terraform show tfplan  # ← Ya lo tienes
+on:
+  workflow_dispatch:  # Permite ejecutarlo manualmente desde GitHub Actions
 
-      # 👇 AGREGA ESTE PASO NUEVO AQUÍ 👇
-      - name: 🔓 Force Unlock Terraform State (if locked)
-        run: |
-          echo "🔓 Forcing unlock of Terraform state..."
-          terraform force-unlock -force 82c49178-4694-6d51-497b-cf728bd97cb9 || echo "✅ No lock found or already unlocked."
+jobs:
+  force-unlock:
+    name: 🔓 Force Unlock Terraform State
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            }
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Terraform Init (Backend)
+        run: terraform init -upgrade
         working-directory: ./terraform
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -17,6 +38,13 @@
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Terraform Apply
-        if: steps.plan.outcome == 'success' && github.ref == 'refs/heads/master'
-        run: terraform apply -input=false -auto-approve tfplan  # ← Ya lo tienes
+      - name: 🔓 Force Unlock Terraform State
+        run: |
+          echo "🔓 Forcing unlock of Terraform state..."
+          terraform force-unlock -force 82c49178-4694-6d51-497b-cf728bd97cb9
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
