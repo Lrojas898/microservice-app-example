@@ -30,10 +30,15 @@ jobs:
         ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     
     - name: 🔄 Refresh State
-      run: terraform refresh
+      run: |
+        terraform refresh -auto-approve \
+          -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
+          -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}"
       working-directory: ./terraform
       env:
         ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        TF_VAR_dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+        TF_VAR_dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
