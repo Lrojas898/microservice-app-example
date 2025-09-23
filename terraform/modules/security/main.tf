@@ -211,7 +211,7 @@ resource "azurerm_application_gateway" "main" {
 
     # Rutas para Users Service
     path_rule {
-      name                       = "users-paths"
+      name                       = "users-paths"  
       paths                      = ["/api/users*", "/users*"]
       backend_address_pool_name  = "users-pool"
       backend_http_settings_name = "users-settings"
@@ -221,26 +221,17 @@ resource "azurerm_application_gateway" "main" {
     path_rule {
       name                       = "todos-paths"
       paths                      = ["/todos*", "/api/todos*"]
-      backend_address_pool_name  = "todos-pool"
+      backend_address_pool_name  = "todos-pool" 
       backend_http_settings_name = "todos-settings"
     }
   }
 
   # UNA SOLA REGLA con PathBasedRouting
   request_routing_rule {
-    name               = "main-routing-rule"
-    rule_type          = "PathBasedRouting" # CAMBIO CRÍTICO
-    http_listener_name = "main-listener"
-    url_path_map_name  = "main-path-map"
-    priority           = 100
+    name                       = "main-routing-rule"
+    rule_type                  = "PathBasedRouting"  # CAMBIO CRÍTICO
+    http_listener_name         = "main-listener"
+    url_path_map_name          = "main-path-map"
+    priority                   = 100
   }
-}
-
-# Log Processor simplificado (Logic App básico)
-resource "azurerm_logic_app_workflow" "log_processor" {
-  name                = "log-message-processor"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  workflow_schema     = "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#"
-  workflow_version    = "1.0.0.0"
 }
