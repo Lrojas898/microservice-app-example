@@ -1,4 +1,3 @@
-
 # Optimización de Costos: Application Gateway y Redis más económicos
 # Ahorro estimado: ~40% en componentes de red y cache
 
@@ -57,7 +56,7 @@ resource "azurerm_public_ip" "appgw" {
   sku                 = "Standard"
 }
 
-# Application Gateway - Configuración más económica
+# Application Gateway - CORREGIDO con Path-Based Routing
 resource "azurerm_application_gateway" "main" {
   name                = "microservice-appgw"
   resource_group_name = var.resource_group_name
@@ -74,24 +73,10 @@ resource "azurerm_application_gateway" "main" {
     subnet_id = var.gateway_subnet_id
   }
 
+  # SOLO puerto 80 necesario para path-based routing
   frontend_port {
     name = "http"
     port = 80
-  }
-
-  frontend_port {
-    name = "users-port"
-    port = 8083
-  }
-
-  frontend_port {
-    name = "auth-port"
-    port = 8000
-  }
-
-  frontend_port {
-    name = "todos-port"
-    port = 8082
   }
 
   frontend_ip_configuration {
@@ -99,6 +84,7 @@ resource "azurerm_application_gateway" "main" {
     public_ip_address_id = azurerm_public_ip.appgw.id
   }
 
+  # Backend pools (sin cambios)
   backend_address_pool {
     name         = "frontend-pool"
     ip_addresses = [var.frontend_container_ip]
@@ -119,6 +105,7 @@ resource "azurerm_application_gateway" "main" {
     ip_addresses = [var.todos_container_ip]
   }
 
+  # Backend HTTP settings (sin cambios)
   backend_http_settings {
     name                                = "users-settings"
     cookie_based_affinity               = "Disabled"
@@ -159,12 +146,12 @@ resource "azurerm_application_gateway" "main" {
     probe_name                          = "frontend-probe"
   }
 
-  # Health probes con intervalos más largos para reducir overhead
+  # Health probes (sin cambios)
   probe {
     name                                      = "users-probe"
     protocol                                  = "Http"
     path                                      = "/users/health"
-    interval                                  = 60 # Aumentado de 30 a 60 segundos
+    interval                                  = 60
     timeout                                   = 30
     unhealthy_threshold                       = 3
     pick_host_name_from_backend_http_settings = true
@@ -174,7 +161,7 @@ resource "azurerm_application_gateway" "main" {
     name                                      = "auth-probe"
     protocol                                  = "Http"
     path                                      = "/version"
-    interval                                  = 60 # Aumentado de 30 a 60 segundos
+    interval                                  = 60
     timeout                                   = 30
     unhealthy_threshold                       = 3
     pick_host_name_from_backend_http_settings = true
@@ -184,7 +171,7 @@ resource "azurerm_application_gateway" "main" {
     name                                      = "todos-probe"
     protocol                                  = "Http"
     path                                      = "/health"
-    interval                                  = 60 # Aumentado de 30 a 60 segundos
+    interval                                  = 60
     timeout                                   = 30
     unhealthy_threshold                       = 3
     pick_host_name_from_backend_http_settings = true
@@ -194,74 +181,58 @@ resource "azurerm_application_gateway" "main" {
     name                                      = "frontend-probe"
     protocol                                  = "Http"
     path                                      = "/"
-    interval                                  = 60 # Aumentado de 30 a 60 segundos
+    interval                                  = 60
     timeout                                   = 30
     unhealthy_threshold                       = 3
     pick_host_name_from_backend_http_settings = true
   }
 
+  # UN SOLO LISTENER en puerto 80
   http_listener {
-    name                           = "frontend-listener"
+    name                           = "main-listener"
     frontend_ip_configuration_name = "public"
     frontend_port_name             = "http"
     protocol                       = "Http"
   }
 
-  http_listener {
-    name                           = "users-listener"
-    frontend_ip_configuration_name = "public"
-    frontend_port_name             = "users-port"
-    protocol                       = "Http"
+  # URL Path Map - NUEVA CONFIGURACION para routing por ruta
+  url_path_map {
+    name                               = "main-path-map"
+    default_backend_address_pool_name  = "frontend-pool"
+    default_backend_http_settings_name = "frontend-settings"
+
+    # Rutas para Auth Service
+    path_rule {
+      name                       = "auth-paths"
+      paths                      = ["/login*", "/api/auth*", "/version*"]
+      backend_address_pool_name  = "auth-pool"
+      backend_http_settings_name = "auth-settings"
+    }
+
+    # Rutas para Users Service
+    path_rule {
+      name                       = "users-paths"  
+      paths                      = ["/api/users*", "/users*"]
+      backend_address_pool_name  = "users-pool"
+      backend_http_settings_name = "users-settings"
+    }
+
+    # Rutas para Todos Service  
+    path_rule {
+      name                       = "todos-paths"
+      paths                      = ["/todos*", "/api/todos*"]
+      backend_address_pool_name  = "todos-pool" 
+      backend_http_settings_name = "todos-settings"
+    }
   }
 
-  http_listener {
-    name                           = "auth-listener"
-    frontend_ip_configuration_name = "public"
-    frontend_port_name             = "auth-port"
-    protocol                       = "Http"
-  }
-
-  http_listener {
-    name                           = "todos-listener"
-    frontend_ip_configuration_name = "public"
-    frontend_port_name             = "todos-port"
-    protocol                       = "Http"
-  }
-
+  # UNA SOLA REGLA con PathBasedRouting
   request_routing_rule {
-    name                       = "frontend-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "frontend-listener"
-    backend_address_pool_name  = "frontend-pool"
-    backend_http_settings_name = "frontend-settings"
+    name                       = "main-routing-rule"
+    rule_type                  = "PathBasedRouting"  # CAMBIO CRÍTICO
+    http_listener_name         = "main-listener"
+    url_path_map_name          = "main-path-map"
     priority                   = 100
-  }
-
-  request_routing_rule {
-    name                       = "users-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "users-listener"
-    backend_address_pool_name  = "users-pool"
-    backend_http_settings_name = "users-settings"
-    priority                   = 200
-  }
-
-  request_routing_rule {
-    name                       = "auth-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "auth-listener"
-    backend_address_pool_name  = "auth-pool"
-    backend_http_settings_name = "auth-settings"
-    priority                   = 300
-  }
-
-  request_routing_rule {
-    name                       = "todos-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "todos-listener"
-    backend_address_pool_name  = "todos-pool"
-    backend_http_settings_name = "todos-settings"
-    priority                   = 400
   }
 }
 
@@ -273,5 +244,3 @@ resource "azurerm_logic_app_workflow" "log_processor" {
   workflow_schema     = "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#"
   workflow_version    = "1.0.0.0"
 }
-
-
