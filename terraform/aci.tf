@@ -45,12 +45,78 @@ resource "azurerm_container_group" "auth" {
 
 # Users Service
 resource "azurerm_container_group" "users" {
-  # ... configuración del users service
+  name                = "users-service"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  ip_address_type     = "Private"
+  os_type             = "Linux"
+  subnet_ids          = [module.network.users_container_subnet_id]
+
+  container {
+    name   = "users-container"
+    image  = var.users_api_image
+    cpu    = "0.5"
+    memory = "1"
+
+    ports {
+      port     = 8083
+      protocol = "TCP"
+    }
+
+    environment_variables = {
+      USERS_API_PORT = "8083"
+      JWT_SECRET     = "PRFT"
+    }
+  }
+
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
+  }
+
+  depends_on = [
+    module.network,
+    azurerm_postgresql_flexible_server.consolidated
+  ]
 }
 
-# Todos Service  
+# Todos Service
 resource "azurerm_container_group" "todos" {
-  # ... configuración del todos service
+  name                = "todos-service"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  ip_address_type     = "Private"
+  os_type             = "Linux"
+  subnet_ids          = [module.network.todos_container_subnet_id]
+
+  container {
+    name   = "todos-container"
+    image  = var.todos_api_image
+    cpu    = "0.5"
+    memory = "1"
+
+    ports {
+      port     = 8082
+      protocol = "TCP"
+    }
+
+    environment_variables = {
+      TODOS_API_PORT = "8082"
+      JWT_SECRET     = "PRFT"
+    }
+  }
+
+  image_registry_credential {
+    server   = "index.docker.io"
+    username = var.dockerhub_username
+    password = var.dockerhub_token
+  }
+
+  depends_on = [
+    module.network,
+    azurerm_postgresql_flexible_server.consolidated
+  ]
 }
 
 # Frontend Service
