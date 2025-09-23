@@ -1,180 +1,246 @@
-# Obtener la IP pública del Application Gateway
-data "azurerm_public_ip" "appgw" {
+# Optimización de Costos: Application Gateway y Redis más económicos
+# Ahorro estimado: ~40% en componentes de red y cache
+
+# Azure Cache for Redis - Versión básica
+resource "azurerm_redis_cache" "main" {
+  name                = "microservice-redis-optimized-${var.unique_suffix}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  capacity            = 0       # Reducido de 2 a 0 (250MB)
+  family              = "C"     # Basic cache family
+  sku_name            = "Basic" # Cambiado de Standard a Basic
+  minimum_tls_version = "1.2"
+}
+
+# --- Redis Private Endpoint and DNS (Mantener para seguridad) ---
+resource "azurerm_private_endpoint" "redis" {
+  name                = "redis-pe"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  subnet_id           = var.cache_subnet_id
+
+  private_service_connection {
+    name                           = "redis-privatesc"
+    private_connection_resource_id = azurerm_redis_cache.main.id
+    subresource_names              = ["redisCache"]
+    is_manual_connection           = false
+  }
+}
+
+resource "azurerm_private_dns_zone" "redis" {
+  name                = "privatelink.redis.cache.windows.net"
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "redis" {
+  name                  = "redis-dns-link"
+  resource_group_name   = var.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.redis.name
+  virtual_network_id    = var.vnet_id
+}
+
+resource "azurerm_private_dns_a_record" "redis" {
+  name                = azurerm_redis_cache.main.name
+  zone_name           = azurerm_private_dns_zone.redis.name
+  resource_group_name = var.resource_group_name
+  ttl                 = 300
+  records             = [azurerm_private_endpoint.redis.private_service_connection[0].private_ip_address]
+}
+
+# Public IP para el Application Gateway
+resource "azurerm_public_ip" "appgw" {
   name                = "appgw-public-ip"
   resource_group_name = var.resource_group_name
+  location            = var.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
 }
 
-# Optimización de Costos: Container Groups con recursos reducidos
-# Ahorro estimado: ~50% en costos de contenedores
-
-# Auth Service - Recursos reducidos
-resource "azurerm_container_group" "auth" {
-  name                = "auth-service"
-  location            = var.location
+# Application Gateway - CORREGIDO con Path-Based Routing
+resource "azurerm_application_gateway" "main" {
+  name                = "microservice-appgw"
   resource_group_name = var.resource_group_name
-  ip_address_type     = "Private"
-  os_type             = "Linux"
-  subnet_ids          = [module.network.auth_container_subnet_id]
+  location            = var.location
 
-  container {
-    name   = "auth-container"
-    image  = var.auth_api_image
-    cpu    = "0.5" # Reducido de 1 a 0.5
-    memory = "1"   # Reducido de 1.5 a 1GB
+  sku {
+    name     = "Standard_v2"
+    tier     = "Standard_v2"
+    capacity = 1 # Reducido de 2 a 1 instancia
+  }
 
-    ports {
-      port     = 8000
-      protocol = "TCP"
+  gateway_ip_configuration {
+    name      = "appGatewayIpConfig"
+    subnet_id = var.gateway_subnet_id
+  }
+
+  # SOLO puerto 80 necesario para path-based routing
+  frontend_port {
+    name = "http"
+    port = 80
+  }
+
+  frontend_ip_configuration {
+    name                 = "public"
+    public_ip_address_id = azurerm_public_ip.appgw.id
+  }
+
+  # Backend pools (sin cambios)
+  backend_address_pool {
+    name         = "frontend-pool"
+    ip_addresses = [var.frontend_container_ip]
+  }
+
+  backend_address_pool {
+    name         = "users-pool"
+    ip_addresses = [var.users_container_ip]
+  }
+
+  backend_address_pool {
+    name         = "auth-pool"
+    ip_addresses = [var.auth_container_ip]
+  }
+
+  backend_address_pool {
+    name         = "todos-pool"
+    ip_addresses = [var.todos_container_ip]
+  }
+
+  # Backend HTTP settings (sin cambios)
+  backend_http_settings {
+    name                                = "users-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = 8083
+    protocol                            = "Http"
+    request_timeout                     = 30
+    pick_host_name_from_backend_address = true
+    probe_name                          = "users-probe"
+  }
+
+  backend_http_settings {
+    name                                = "auth-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = 8000
+    protocol                            = "Http"
+    request_timeout                     = 30
+    pick_host_name_from_backend_address = true
+    probe_name                          = "auth-probe"
+  }
+
+  backend_http_settings {
+    name                                = "todos-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = 8082
+    protocol                            = "Http"
+    request_timeout                     = 30
+    pick_host_name_from_backend_address = true
+    probe_name                          = "todos-probe"
+  }
+
+  backend_http_settings {
+    name                                = "frontend-settings"
+    cookie_based_affinity               = "Disabled"
+    port                                = 80
+    protocol                            = "Http"
+    request_timeout                     = 30
+    pick_host_name_from_backend_address = true
+    probe_name                          = "frontend-probe"
+  }
+
+  # Health probes (sin cambios)
+  probe {
+    name                                      = "users-probe"
+    protocol                                  = "Http"
+    path                                      = "/users/health"
+    interval                                  = 60
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
+  }
+
+  probe {
+    name                                      = "auth-probe"
+    protocol                                  = "Http"
+    path                                      = "/version"
+    interval                                  = 60
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
+  }
+
+  probe {
+    name                                      = "todos-probe"
+    protocol                                  = "Http"
+    path                                      = "/health"
+    interval                                  = 60
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
+  }
+
+  probe {
+    name                                      = "frontend-probe"
+    protocol                                  = "Http"
+    path                                      = "/"
+    interval                                  = 60
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
+  }
+
+  # UN SOLO LISTENER en puerto 80
+  http_listener {
+    name                           = "main-listener"
+    frontend_ip_configuration_name = "public"
+    frontend_port_name             = "http"
+    protocol                       = "Http"
+  }
+
+  # URL Path Map - NUEVA CONFIGURACION para routing por ruta
+  url_path_map {
+    name                               = "main-path-map"
+    default_backend_address_pool_name  = "frontend-pool"
+    default_backend_http_settings_name = "frontend-settings"
+
+    # Rutas para Auth Service
+    path_rule {
+      name                       = "auth-paths"
+      paths                      = ["/login*", "/api/auth*", "/version*"]
+      backend_address_pool_name  = "auth-pool"
+      backend_http_settings_name = "auth-settings"
     }
 
-    environment_variables = {
-      AUTH_API_PORT     = "8000"
-      USERS_API_ADDRESS = "http://${azurerm_container_group.users.ip_address}:8083"
-      JWT_SECRET        = "PRFT"
+    # Rutas para Users Service
+    path_rule {
+      name                       = "users-paths"  
+      paths                      = ["/api/users*", "/users*"]
+      backend_address_pool_name  = "users-pool"
+      backend_http_settings_name = "users-settings"
+    }
+
+    # Rutas para Todos Service  
+    path_rule {
+      name                       = "todos-paths"
+      paths                      = ["/todos*", "/api/todos*"]
+      backend_address_pool_name  = "todos-pool" 
+      backend_http_settings_name = "todos-settings"
     }
   }
 
-  image_registry_credential {
-    server   = "index.docker.io"
-    username = var.dockerhub_username
-    password = var.dockerhub_token
+  # UNA SOLA REGLA con PathBasedRouting
+  request_routing_rule {
+    name                       = "main-routing-rule"
+    rule_type                  = "PathBasedRouting"  # CAMBIO CRÍTICO
+    http_listener_name         = "main-listener"
+    url_path_map_name          = "main-path-map"
+    priority                   = 100
   }
-
-  depends_on = [
-    module.network,
-    azurerm_postgresql_flexible_server.consolidated
-  ]
 }
 
-# Users Service - Recursos reducidos
-resource "azurerm_container_group" "users" {
-  name                = "users-service"
+# Log Processor simplificado (Logic App básico)
+resource "azurerm_logic_app_workflow" "log_processor" {
+  name                = "log-message-processor"
   location            = var.location
   resource_group_name = var.resource_group_name
-  ip_address_type     = "Private"
-  os_type             = "Linux"
-  subnet_ids          = [module.network.users_container_subnet_id]
-
-  container {
-    name   = "users-container"
-    image  = var.users_api_image
-    cpu    = "0.5" # Reducido de 1 a 0.5
-    memory = "1"   # Reducido de 1.5 a 1GB
-
-    ports {
-      port     = 8083
-      protocol = "TCP"
-    }
-
-    environment_variables = {
-      SERVER_PORT = "8083"
-      JWT_SECRET  = "PRFT"
-      # Conexión al servidor consolidado - CORREGIDO para PostgreSQL Flexible Server
-      SPRING_DATASOURCE_URL      = "jdbc:postgresql://${azurerm_postgresql_flexible_server.consolidated.name}.privatelink.postgres.database.azure.com:5432/usersdb?sslmode=require"
-      SPRING_DATASOURCE_USERNAME = azurerm_postgresql_flexible_server.consolidated.administrator_login
-      SPRING_DATASOURCE_PASSWORD = random_password.postgres_consolidated_password.result
-      SPRING_REDIS_HOST          = module.security.redis_cache_hostname
-      SPRING_REDIS_PORT          = "6380"
-      SPRING_REDIS_PASSWORD      = module.security.redis_cache_primary_key
-      SPRING_REDIS_SSL           = "true"
-    }
-  }
-
-  image_registry_credential {
-    server   = "index.docker.io"
-    username = var.dockerhub_username
-    password = var.dockerhub_token
-  }
-
-  depends_on = [
-    module.network,
-    azurerm_postgresql_flexible_server.consolidated
-  ]
-}
-
-# Todos Service - Recursos reducidos
-resource "azurerm_container_group" "todos" {
-  name                = "todos-service"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  ip_address_type     = "Private"
-  os_type             = "Linux"
-  subnet_ids          = [module.network.todos_container_subnet_id]
-
-  container {
-    name   = "todos-container"
-    image  = var.todos_api_image
-    cpu    = "0.5" # Reducido de 1 a 0.5
-    memory = "1"   # Reducido de 1.5 a 1GB
-
-    ports {
-      port     = 8082
-      protocol = "TCP"
-    }
-
-    environment_variables = {
-      PORT = "8082"
-      # Conexión al servidor consolidado
-      DB_HOST        = "${azurerm_postgresql_flexible_server.consolidated.name}.privatelink.postgres.database.azure.com"
-      DB_NAME        = "todosdb"
-      DB_USER        = azurerm_postgresql_flexible_server.consolidated.administrator_login
-      DB_PASSWORD    = random_password.postgres_consolidated_password.result
-      REDIS_HOST     = module.security.redis_cache_hostname
-      REDIS_PORT     = "6380"
-      REDIS_PASSWORD = module.security.redis_cache_primary_key
-    }
-  }
-
-  image_registry_credential {
-    server   = "index.docker.io"
-    username = var.dockerhub_username
-    password = var.dockerhub_token
-  }
-
-  depends_on = [
-    module.network,
-    azurerm_postgresql_flexible_server.consolidated
-  ]
-}
-
-# Frontend Service - CORREGIDO para usar IP pública del Application Gateway
-resource "azurerm_container_group" "frontend" {
-  name                = "frontend-service"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  ip_address_type     = "Private"
-  os_type             = "Linux"
-  subnet_ids          = [module.network.frontend_container_subnet_id]
-
-  container {
-    name   = "frontend-container"
-    image  = var.frontend_image
-    cpu    = "0.25" # Muy reducido para nginx
-    memory = "0.5"  # Muy reducido para nginx
-
-    ports {
-      port     = 80
-      protocol = "TCP"
-    }
-
-    # CORRECCIÓN CRÍTICA: Usar IP pública del Application Gateway en lugar de IPs privadas
-    environment_variables = {
-      AUTH_API_ADDRESS  = data.azurerm_public_ip.appgw.ip_address
-      TODOS_API_ADDRESS = data.azurerm_public_ip.appgw.ip_address
-      USERS_API_ADDRESS = data.azurerm_public_ip.appgw.ip_address
-    }
-  }
-
-  image_registry_credential {
-    server   = "index.docker.io"
-    username = var.dockerhub_username
-    password = var.dockerhub_token
-  }
-
-  depends_on = [
-    module.network,
-    azurerm_container_group.auth,
-    azurerm_container_group.todos,
-    azurerm_container_group.users
-  ]
+  workflow_schema     = "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#"
+  workflow_version    = "1.0.0.0"
 }
