@@ -32,7 +32,7 @@ terraform plan -out=optimize-plan
 echo "
 🎯 RESUMEN DE OPTIMIZACIONES APLICADAS:
 
-📊 AHORRO ESTIMADO: 60-70% en costos totales
+📊 AHORRO ESTIMADO: 75-85% en costos totales (Application Gateway eliminado)
 
 🗄️  BASES DE DATOS:
    ❌ Antes: 3 servidores PostgreSQL separados
@@ -40,14 +40,14 @@ echo "
    💰 Ahorro: ~70%
 
 🚀 CONTENEDORES:
-   ❌ Antes: 4 containers con 1 CPU + 1.5GB RAM c/u
-   ✅ Ahora: Recursos optimizados por servicio
-   💰 Ahorro: ~50%
+   ❌ Antes: 4 containers privados con subnets complejas
+   ✅ Ahora: 4 containers con IPs públicas directas
+   💰 Ahorro: ~50% (sin NSGs ni subnets de contenedores)
 
 🌐 APPLICATION GATEWAY:
-   ❌ Antes: Capacidad 2 instancias
-   ✅ Ahora: Capacidad 1 instancia
-   💰 Ahorro: ~50%
+   ❌ Antes: Application Gateway con capacidad 2 instancias
+   ✅ Ahora: ELIMINADO - Acceso directo por IPs públicas
+   💰 Ahorro: ~100% (componente completamente removido)
 
 🗃️  REDIS CACHE:
    ❌ Antes: Standard con capacidad 2 (2.5GB)

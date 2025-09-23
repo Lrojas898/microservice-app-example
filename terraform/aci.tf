@@ -1,17 +1,12 @@
-# Obtener la IP pública del Application Gateway
-data "azurerm_public_ip" "appgw" {
-  name                = "appgw-public-ip"
-  resource_group_name = var.resource_group_name
-}
+# Application Gateway removido - acceso directo a servicios
 
 # Container Groups únicamente - SIN Redis ni Application Gateway
 resource "azurerm_container_group" "auth" {
   name                = "auth-service"
   location            = var.location
   resource_group_name = var.resource_group_name
-  ip_address_type     = "Private"
+  ip_address_type     = "Public"
   os_type             = "Linux"
-  subnet_ids          = [module.network.auth_container_subnet_id]
 
   container {
     name   = "auth-container"
@@ -57,7 +52,6 @@ resource "azurerm_container_group" "auth" {
   }
 
   depends_on = [
-    module.network,
     azurerm_postgresql_flexible_server.consolidated
   ]
 }
@@ -67,9 +61,8 @@ resource "azurerm_container_group" "users" {
   name                = "users-service"
   location            = var.location
   resource_group_name = var.resource_group_name
-  ip_address_type     = "Private"
+  ip_address_type     = "Public"
   os_type             = "Linux"
-  subnet_ids          = [module.network.users_container_subnet_id]
 
   container {
     name   = "users-container"
@@ -95,9 +88,7 @@ resource "azurerm_container_group" "users" {
     password = var.dockerhub_token
   }
 
-  depends_on = [
-    module.network
-  ]
+  # No dependencies needed for public container groups
 }
 
 # Todos Service
@@ -105,9 +96,8 @@ resource "azurerm_container_group" "todos" {
   name                = "todos-service"
   location            = var.location
   resource_group_name = var.resource_group_name
-  ip_address_type     = "Private"
+  ip_address_type     = "Public"
   os_type             = "Linux"
-  subnet_ids          = [module.network.todos_container_subnet_id]
 
   container {
     name   = "todos-container"
@@ -152,7 +142,6 @@ resource "azurerm_container_group" "todos" {
   }
 
   depends_on = [
-    module.network,
     azurerm_postgresql_flexible_server.consolidated
   ]
 }
@@ -162,9 +151,8 @@ resource "azurerm_container_group" "frontend" {
   name                = "frontend-service"
   location            = var.location
   resource_group_name = var.resource_group_name
-  ip_address_type     = "Private"
+  ip_address_type     = "Public"
   os_type             = "Linux"
-  subnet_ids          = [module.network.frontend_container_subnet_id]
 
   container {
     name   = "frontend-container"
@@ -177,10 +165,10 @@ resource "azurerm_container_group" "frontend" {
       protocol = "TCP"
     }
 
-    # CORRECCIÓN: Usar Application Gateway para ruteo centralizado
+    # CORRECCIÓN: Usar IPs públicas directas de los servicios
     environment_variables = {
-      AUTH_API_ADDRESS  = "http://${data.azurerm_public_ip.appgw.ip_address}"
-      TODOS_API_ADDRESS = "http://${data.azurerm_public_ip.appgw.ip_address}"
+      AUTH_API_ADDRESS  = "http://${azurerm_container_group.auth.ip_address}:8000"
+      TODOS_API_ADDRESS = "http://${azurerm_container_group.todos.ip_address}:8082"
     }
   }
 
@@ -191,7 +179,6 @@ resource "azurerm_container_group" "frontend" {
   }
 
   depends_on = [
-    module.network,
     azurerm_container_group.auth,
     azurerm_container_group.todos,
     azurerm_container_group.users

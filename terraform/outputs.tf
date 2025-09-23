@@ -18,17 +18,13 @@ output "todos_subnet_id" {
   value = module.network.todos_subnet_id
 }
 
-output "gateway_subnet_id" {
-  value = module.network.gateway_subnet_id
-}
+# Gateway subnet output removed - Application Gateway eliminated
 
 output "cache_subnet_id" {
   value = module.network.cache_subnet_id
 }
 
-output "application_gateway_name" {
-  value = module.security.application_gateway_name
-}
+# Application Gateway outputs removed
 
 output "redis_cache_hostname" {
   value = module.security.redis_cache_hostname
@@ -69,15 +65,23 @@ output "postgres_todos_password" {
   sensitive = true
 }
 
-# Application Gateway Public Access
-output "application_gateway_public_ip" {
-  value = module.security.application_gateway_public_ip
+# Service Public IPs for direct access
+output "auth_service_ip" {
+  value = azurerm_container_group.auth.ip_address
+}
+
+output "users_service_ip" {
+  value = azurerm_container_group.users.ip_address
+}
+
+output "todos_service_ip" {
+  value = azurerm_container_group.todos.ip_address
+}
+
+output "frontend_service_ip" {
+  value = azurerm_container_group.frontend.ip_address
 }
 
 output "frontend_url" {
-  value = "http://${module.security.application_gateway_public_ip}"
-}
-
-output "frontend_private_ip" {
-  value = azurerm_container_group.frontend.ip_address
+  value = "http://${azurerm_container_group.frontend.ip_address}"
 }
