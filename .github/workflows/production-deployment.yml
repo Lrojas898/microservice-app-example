@@ -215,8 +215,8 @@ jobs:
           echo "📋 Generating execution plan..."
           TAG=${{ needs.build-production-images.outputs.image_tag }}
           terraform plan \
-            -var="location=eastus2" \
-            -var="resource_group_location=eastus2" \
+            -var="location=chilecentral" \
+            -var="resource_group_location=chilecentral" \
             -var="db_location=chilecentral" \
             -var="subscriptionId=${{ env.AZURE_SUBSCRIPTION_ID }}" \
             -var="client_id=${{ env.AZURE_CLIENT_ID }}" \
