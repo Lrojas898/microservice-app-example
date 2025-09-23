@@ -38,9 +38,11 @@ module "security" {
   unique_suffix         = random_string.unique.result
 }
 
-# Random strings for unique naming
-resource "random_string" "unique" {
+resource "random_string" "suffix" {
   length  = 8
   special = false
   upper   = false
+  keepers = {
+    region = var.db_location
+  }
 }
