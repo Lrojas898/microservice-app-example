@@ -20,4 +20,4 @@ public class HealthController {
 
         return new ResponseEntity<>(healthStatus, HttpStatus.OK);
     }
-}
+}z

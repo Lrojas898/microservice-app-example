@@ -47,10 +47,10 @@ echo "🔍 Verificando endpoints principales..."
 check_endpoint "Frontend" "http://$GATEWAY_IP/"
 
 # Verificar Auth API
-check_endpoint "Auth API" "http://$GATEWAY_IP:8000/version"
+check_endpoint "Auth API" "http://$GATEWAY_IP/version"
 
-# Verificar Users API  
-check_endpoint "Users API Health" "http://$GATEWAY_IP:8083/users/health"
+# Verificar Users API
+check_endpoint "Users API Health" "http://$GATEWAY_IP/users/health"
 
 # Verificar Todos API
 check_endpoint "Todos API Health" "http://$GATEWAY_IP:8082/health"
