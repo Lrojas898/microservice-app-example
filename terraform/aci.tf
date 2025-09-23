@@ -235,12 +235,3 @@ resource "azurerm_application_gateway" "main" {
     priority           = 100
   }
 }
-
-# Log Processor simplificado (Logic App básico)
-resource "azurerm_logic_app_workflow" "log_processor" {
-  name                = "log-message-processor"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  workflow_schema     = "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#"
-  workflow_version    = "1.0.0.0"
-}
