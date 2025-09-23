@@ -1,4 +1,4 @@
-- name: 🔄 Refresh State
+name: 🔄 Refresh State
   run: terraform refresh
   working-directory: ./terraform
   env:
