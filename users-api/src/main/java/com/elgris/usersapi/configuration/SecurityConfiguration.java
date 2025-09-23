@@ -22,9 +22,10 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests()
-                .antMatchers("/health", "/ready", "/users/health", "/users/ready",
-                        "/actuator/**", "/info", "/metrics", "/users/**")
+                .antMatchers("/health")
                 .permitAll()
+                .antMatchers("/users/**")
+                .authenticated()
                 .anyRequest().authenticated()
                 .and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
