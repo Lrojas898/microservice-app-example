@@ -38,7 +38,7 @@ module "security" {
   unique_suffix         = random_string.unique.result
 }
 
-resource "random_string" "suffix" {
+resource "random_string" "unique" {
   length  = 8
   special = false
   upper   = false
