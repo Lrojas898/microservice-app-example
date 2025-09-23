@@ -35,33 +35,6 @@ public class UsersController {
     @Autowired
     private DataSource dataSource;
 
-    @RequestMapping(value = "/health", method = RequestMethod.GET)
-    public ResponseEntity<Map<String, Object>> health() {
-        Map<String, Object> healthStatus = new HashMap<>();
-        healthStatus.put("status", "UP");
-        healthStatus.put("service", "users-api");
-        healthStatus.put("timestamp", System.currentTimeMillis());
-
-        try {
-            // Check database connectivity
-            try (Connection connection = dataSource.getConnection()) {
-                if (connection.isValid(2)) {
-                    healthStatus.put("database", "UP");
-                } else {
-                    healthStatus.put("database", "DOWN");
-                    healthStatus.put("status", "DOWN");
-                }
-            }
-        } catch (Exception e) {
-            logger.error("Health check database connection failed", e);
-            healthStatus.put("database", "DOWN");
-            healthStatus.put("status", "DOWN");
-            healthStatus.put("error", e.getMessage());
-        }
-
-        HttpStatus status = "UP".equals(healthStatus.get("status")) ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
-        return new ResponseEntity<>(healthStatus, status);
-    }
 
     @RequestMapping(value = "/ready", method = RequestMethod.GET)
     public ResponseEntity<Map<String, Object>> readiness() {
