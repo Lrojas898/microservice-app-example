@@ -28,6 +28,14 @@ resource "azurerm_container_group" "auth" {
       AUTH_API_PORT     = "8000"
       USERS_API_ADDRESS = "http://${azurerm_container_group.users.ip_address}:8083"
       JWT_SECRET        = "PRFT"
+      REDIS_HOST        = "${module.security.redis_cache_hostname}"
+      REDIS_PASSWORD    = "${module.security.redis_cache_primary_key}"
+      REDIS_PORT        = "6380"
+      DB_HOST           = "${azurerm_postgresql_flexible_server.consolidated.fqdn}"
+      DB_NAME           = "authdb"
+      DB_USER           = "${azurerm_postgresql_flexible_server.consolidated.administrator_login}"
+      DB_PASSWORD       = "${azurerm_postgresql_flexible_server.consolidated.administrator_password}"
+      DB_PORT           = "5432"
     }
   }
 
@@ -66,6 +74,14 @@ resource "azurerm_container_group" "users" {
     environment_variables = {
       USERS_API_PORT = "8083"
       JWT_SECRET     = "PRFT"
+      REDIS_HOST     = "${module.security.redis_cache_hostname}"
+      REDIS_PASSWORD = "${module.security.redis_cache_primary_key}"
+      REDIS_PORT     = "6380"
+      DB_HOST        = "${azurerm_postgresql_flexible_server.consolidated.fqdn}"
+      DB_NAME        = "usersdb"
+      DB_USER        = "${azurerm_postgresql_flexible_server.consolidated.administrator_login}"
+      DB_PASSWORD    = "${azurerm_postgresql_flexible_server.consolidated.administrator_password}"
+      DB_PORT        = "5432"
     }
   }
 
@@ -104,6 +120,14 @@ resource "azurerm_container_group" "todos" {
     environment_variables = {
       TODOS_API_PORT = "8082"
       JWT_SECRET     = "PRFT"
+      REDIS_HOST     = "${module.security.redis_cache_hostname}"
+      REDIS_PASSWORD = "${module.security.redis_cache_primary_key}"
+      REDIS_PORT     = "6380"
+      DB_HOST        = "${azurerm_postgresql_flexible_server.consolidated.fqdn}"
+      DB_NAME        = "todosdb"
+      DB_USER        = "${azurerm_postgresql_flexible_server.consolidated.administrator_login}"
+      DB_PASSWORD    = "${azurerm_postgresql_flexible_server.consolidated.administrator_password}"
+      DB_PORT        = "5432"
     }
   }
 
@@ -139,11 +163,11 @@ resource "azurerm_container_group" "frontend" {
       protocol = "TCP"
     }
 
-    # CORRECCIÓN: Usar IP pública del Application Gateway
+    # CORRECCIÓN: Usar IP pública del Application Gateway con rutas correctas
     environment_variables = {
-      AUTH_API_ADDRESS  = "http://${data.azurerm_public_ip.appgw.ip_address}"
-      TODOS_API_ADDRESS = "http://${data.azurerm_public_ip.appgw.ip_address}"
-      USERS_API_ADDRESS = "http://${data.azurerm_public_ip.appgw.ip_address}"
+      AUTH_API_ADDRESS  = "http://${data.azurerm_public_ip.appgw.ip_address}/api/auth"
+      TODOS_API_ADDRESS = "http://${data.azurerm_public_ip.appgw.ip_address}/api/todos"
+      USERS_API_ADDRESS = "http://${data.azurerm_public_ip.appgw.ip_address}/api/users"
     }
   }
 

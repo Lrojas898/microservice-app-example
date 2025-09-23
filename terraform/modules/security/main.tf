@@ -146,45 +146,49 @@ resource "azurerm_application_gateway" "main" {
     probe_name                          = "frontend-probe"
   }
 
-  # Health probes (sin cambios)
+  # Health probes corregidos
   probe {
     name                                      = "users-probe"
     protocol                                  = "Http"
-    path                                      = "/users/health"
-    interval                                  = 60
-    timeout                                   = 30
+    path                                      = "/health"
+    interval                                  = 30
+    timeout                                   = 20
     unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = true
+    pick_host_name_from_backend_http_settings = false
+    host                                      = var.users_container_ip
   }
 
   probe {
     name                                      = "auth-probe"
     protocol                                  = "Http"
-    path                                      = "/version"
-    interval                                  = 60
-    timeout                                   = 30
+    path                                      = "/health"
+    interval                                  = 30
+    timeout                                   = 20
     unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = true
+    pick_host_name_from_backend_http_settings = false
+    host                                      = var.auth_container_ip
   }
 
   probe {
     name                                      = "todos-probe"
     protocol                                  = "Http"
     path                                      = "/health"
-    interval                                  = 60
-    timeout                                   = 30
+    interval                                  = 30
+    timeout                                   = 20
     unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = true
+    pick_host_name_from_backend_http_settings = false
+    host                                      = var.todos_container_ip
   }
 
   probe {
     name                                      = "frontend-probe"
     protocol                                  = "Http"
     path                                      = "/"
-    interval                                  = 60
-    timeout                                   = 30
+    interval                                  = 30
+    timeout                                   = 20
     unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = true
+    pick_host_name_from_backend_http_settings = false
+    host                                      = var.frontend_container_ip
   }
 
   # UN SOLO LISTENER en puerto 80
