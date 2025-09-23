@@ -1,0 +1,22 @@
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan ...  # ← Ya lo tienes
+
+      - name: Show Plan (for review)
+        run: terraform show tfplan  # ← Ya lo tienes
+
+      # 👇 AGREGA ESTE PASO NUEVO AQUÍ 👇
+      - name: 🔓 Force Unlock Terraform State (if locked)
+        run: |
+          echo "🔓 Forcing unlock of Terraform state..."
+          terraform force-unlock -force 82c49178-4694-6d51-497b-cf728bd97cb9 || echo "✅ No lock found or already unlocked."
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Apply
+        if: steps.plan.outcome == 'success' && github.ref == 'refs/heads/master'
+        run: terraform apply -input=false -auto-approve tfplan  # ← Ya lo tienes
