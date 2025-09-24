@@ -111,7 +111,7 @@ resource "azurerm_container_group" "users" {
     environment_variables = {
       USERS_API_PORT = "8083"
       JWT_SECRET     = "myfancysecret1234567890abcdef1234"
-      ZIPKIN_URL     = "http://${azurerm_container_group.zipkin.ip_address}:9411/"
+      ZIPKIN_URL     = "http://${azurerm_container_group.zipkin.ip_address}:9411/api/v2/spans"
     }
   }
 
@@ -121,7 +121,9 @@ resource "azurerm_container_group" "users" {
     password = var.dockerhub_token
   }
 
-  # No dependencies needed for public container groups
+  depends_on = [
+    azurerm_container_group.zipkin
+  ]
 }
 
 # Todos Service
