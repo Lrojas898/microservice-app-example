@@ -23,9 +23,11 @@ const redisClient = require("redis").createClient({
   tls: {}, // Enable TLS for Azure Redis
   retry_strategy: function (options) {
     if (options.error && options.error.code === "ECONNREFUSED") {
+      console.log("Redis connection refused, continuing without Redis");
       return new Error("The server refused the connection");
     }
     if (options.total_retry_time > 1000 * 60 * 60) {
+      console.log("Redis retry time exhausted, continuing without Redis");
       return new Error("Retry time exhausted");
     }
     if (options.attempt > 10) {
@@ -36,6 +38,19 @@ const redisClient = require("redis").createClient({
     }
     return Math.min(options.attempt * 100, 2000);
   },
+});
+
+// Handle Redis errors gracefully
+redisClient.on('error', function(err) {
+  console.log('Redis client error: ' + err.message);
+});
+
+redisClient.on('connect', function() {
+  console.log('Redis client connected');
+});
+
+redisClient.on('ready', function() {
+  console.log('Redis client ready');
 });
 const port = process.env.TODO_API_PORT || 8082;
 const jwtSecret = process.env.JWT_SECRET || "foo";
