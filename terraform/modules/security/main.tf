@@ -10,7 +10,7 @@ resource "azurerm_redis_cache" "main" {
   family                        = "C"     # Basic cache family
   sku_name                      = "Basic" # Cambiado de Standard a Basic
   minimum_tls_version           = "1.2"
-  public_network_access_enabled = true    # Habilitar acceso público para containers
+  public_network_access_enabled = true # Habilitar acceso público para containers
 }
 
 # --- Redis Private Endpoint and DNS (Mantener para seguridad) ---
