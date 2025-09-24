@@ -53,6 +53,23 @@ services:
       timeout: 10s
       retries: 5
 
+  # Zipkin for distributed tracing
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    environment:
+      STORAGE_TYPE: mem
+      JAVA_OPTS: "-Xms512m -Xmx1024m"
+    ports:
+      - "9411:9411"
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9411/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   # Auth API (Go)
   auth-api:
     build:
@@ -66,6 +83,7 @@ services:
       - USERS_API_ADDRESS=http://users-api:8083
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=myfancysecret1234567890abcdef1234
+      - ZIPKIN_URL=http://zipkin:9411/api/v2/spans
     networks:
       - microservices-network
     depends_on:
@@ -93,6 +111,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - JWT_SECRET=myfancysecret1234567890abcdef1234
+      - ZIPKIN_URL=http://zipkin:9411/
     networks:
       - microservices-network
     depends_on:
@@ -119,6 +138,10 @@ services:
       - AUTH_API_URL=http://auth-api:8000
       - USERS_API_URL=http://users-api:8083
       - JWT_SECRET=myfancysecret1234567890abcdef1234
+      - ZIPKIN_URL=http://zipkin:9411/api/v2/spans
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CHANNEL=log_channel
     networks:
       - microservices-network
     depends_on:
@@ -140,12 +163,17 @@ services:
       dockerfile: Dockerfile
     container_name: log-message-processor
     environment:
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CHANNEL=log_channel
+      - ZIPKIN_URL=http://zipkin:9411/api/v2/spans
       - LOG_LEVEL=INFO
     networks:
       - microservices-network
     depends_on:
-      rabbitmq:
+      redis:
+        condition: service_healthy
+      zipkin:
         condition: service_healthy
     restart: unless-stopped
 
@@ -161,6 +189,7 @@ services:
       - AUTH_API_ADDRESS=http://auth-api:8000
       - TODOS_API_ADDRESS=http://todos-api:8082
       - USERS_API_ADDRESS=http://users-api:8083
+      - ZIPKIN_URL=http://zipkin:9411/api/v2/spans
     networks:
       - microservices-network
     depends_on:
@@ -169,6 +198,8 @@ services:
       todos-api:
         condition: service_healthy
       users-api:
+        condition: service_healthy
+      zipkin:
         condition: service_healthy
     restart: unless-stopped
 
