@@ -3,13 +3,14 @@
 
 # Azure Cache for Redis - Versión básica
 resource "azurerm_redis_cache" "main" {
-  name                = "microservice-redis-optimized-${var.unique_suffix}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  capacity            = 0       # Reducido de 2 a 0 (250MB)
-  family              = "C"     # Basic cache family
-  sku_name            = "Basic" # Cambiado de Standard a Basic
-  minimum_tls_version = "1.2"
+  name                          = "microservice-redis-optimized-${var.unique_suffix}"
+  location                      = var.location
+  resource_group_name           = var.resource_group_name
+  capacity                      = 0       # Reducido de 2 a 0 (250MB)
+  family                        = "C"     # Basic cache family
+  sku_name                      = "Basic" # Cambiado de Standard a Basic
+  minimum_tls_version           = "1.2"
+  public_network_access_enabled = true    # Habilitar acceso público para containers
 }
 
 # --- Redis Private Endpoint and DNS (Mantener para seguridad) ---
