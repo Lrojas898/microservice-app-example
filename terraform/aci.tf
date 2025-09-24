@@ -187,7 +187,7 @@ resource "azurerm_container_group" "log_processor" {
   name                = "log-processor-service"
   location            = var.location
   resource_group_name = var.resource_group_name
-  ip_address_type     = "None"  # No public IP needed
+  ip_address_type     = "None" # No public IP needed
   os_type             = "Linux"
 
   container {
