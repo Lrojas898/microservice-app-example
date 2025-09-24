@@ -40,6 +40,9 @@ const redisClient = require("redis").createClient({
 const port = process.env.TODO_API_PORT || 8082;
 const jwtSecret = process.env.JWT_SECRET || "foo";
 
+console.log('DEBUG: todos-api JWT_SECRET:', jwtSecret);
+console.log('DEBUG: todos-api JWT_SECRET length:', jwtSecret.length);
+
 const app = express();
 
 // tracing
@@ -62,11 +65,18 @@ app.get("/health", function (req, res) {
   });
 });
 
-app.use(jwt({ secret: jwtSecret }));
+app.use(jwt({
+  secret: jwtSecret,
+  requestProperty: 'user'
+}));
 app.use(zipkinMiddleware({ tracer }));
 app.use(function (err, req, res, next) {
+  console.log('DEBUG: JWT Error:', err.name, err.message);
+  console.log('DEBUG: JWT Error details:', err);
   if (err.name === "UnauthorizedError") {
     res.status(401).send({ message: "invalid token" });
+  } else {
+    next(err);
   }
 });
 app.use(bodyParser.urlencoded({ extended: false }));

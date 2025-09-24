@@ -77,7 +77,7 @@ resource "azurerm_container_group" "users" {
 
     environment_variables = {
       USERS_API_PORT = "8083"
-      JWT_SECRET     = "PRFT"
+      JWT_SECRET     = "myfancysecret1234567890abcdef1234"
       ZIPKIN_URL     = "http://127.0.0.1:9411/"
     }
   }

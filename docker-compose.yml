@@ -118,6 +118,7 @@ services:
       - NODE_ENV=production
       - AUTH_API_URL=http://auth-api:8000
       - USERS_API_URL=http://users-api:8083
+      - JWT_SECRET=myfancysecret1234567890abcdef1234
     networks:
       - microservices-network
     depends_on:
