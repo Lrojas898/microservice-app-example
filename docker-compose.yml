@@ -1,0 +1,180 @@
+version: '3.8'
+
+services:
+  # Base de datos para usuarios-api
+  users-db:
+    image: postgres:13-alpine
+    container_name: users-db
+    environment:
+      POSTGRES_DB: usersdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - users_db_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis para caché
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # RabbitMQ para mensajería
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Auth API (Go)
+  auth-api:
+    build:
+      context: ./auth-api
+      dockerfile: Dockerfile
+    container_name: auth-api
+    ports:
+      - "8000:8000"
+    environment:
+      - AUTH_API_PORT=8000
+      - USERS_API_ADDRESS=http://users-api:8083
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=myfancysecret1234567890abcdef1234
+    networks:
+      - microservices-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget --no-verbose --tries=1 --spider http://localhost:8000/version 2>&1 | grep -q '200 OK' || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Users API (Java Spring Boot)
+  users-api:
+    build:
+      context: ./users-api
+      dockerfile: Dockerfile
+    container_name: users-api
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://users-db:5432/usersdb
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=myfancysecret1234567890abcdef1234
+    networks:
+      - microservices-network
+    depends_on:
+      users-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -s -o /dev/null -w '%{http_code}' http://localhost:8083/health | grep -q '401' && exit 0 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Todos API (Node.js)
+  todos-api:
+    build:
+      context: ./todos-api
+      dockerfile: Dockerfile
+    container_name: todos-api
+    ports:
+      - "8082:8082"
+    environment:
+      - PORT=8082
+      - NODE_ENV=production
+      - AUTH_API_URL=http://auth-api:8000
+      - USERS_API_URL=http://users-api:8083
+    networks:
+      - microservices-network
+    depends_on:
+      auth-api:
+        condition: service_healthy
+      users-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget --no-verbose --tries=1 --spider http://localhost:8082/todos 2>&1 | grep -q '401 Unauthorized' && exit 0 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Log Message Processor (Python)
+  log-message-processor:
+    build:
+      context: ./log-message-processor
+      dockerfile: Dockerfile
+    container_name: log-message-processor
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - LOG_LEVEL=INFO
+    networks:
+      - microservices-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Frontend (Vue.js/React)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:80"
+    environment:
+      - AUTH_API_ADDRESS=http://auth-api:8000
+      - TODOS_API_ADDRESS=http://todos-api:8082
+      - USERS_API_ADDRESS=http://users-api:8083
+    networks:
+      - microservices-network
+    depends_on:
+      auth-api:
+        condition: service_healthy
+      todos-api:
+        condition: service_healthy
+      users-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  users_db_data:
+    driver: local
+
+networks:
+  microservices-network:
+    driver: bridge

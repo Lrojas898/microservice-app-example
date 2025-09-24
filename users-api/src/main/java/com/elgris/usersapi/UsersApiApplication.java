@@ -34,17 +34,6 @@ public class UsersApiApplication {
 		return ResponseEntity.ok(response);
 	}
 
-	@GetMapping("/health")
-	public ResponseEntity<Map<String, Object>> healthCheck() {
-		Map<String, Object> health = new HashMap<>();
-		health.put("status", "UP");
-		health.put("service", "users-api");
-		health.put("timestamp", Instant.now().toString());
-		health.put("uptime", Instant.now().getEpochSecond() - startTime.getEpochSecond());
-
-		logger.debug("Health check endpoint accessed");
-		return ResponseEntity.ok(health);
-	}
 
 	@GetMapping("/ready")
 	public ResponseEntity<Map<String, Object>> readiness() {

@@ -22,7 +22,7 @@ resource "azurerm_container_group" "auth" {
     environment_variables = {
       AUTH_API_PORT                       = "8000"
       USERS_API_ADDRESS                   = "http://${azurerm_container_group.users.ip_address}:8083"
-      JWT_SECRET                          = "PRFT"
+      JWT_SECRET                          = "myfancysecret1234567890abcdef1234"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
       REDIS_PASSWORD                      = "${module.security.redis_cache_primary_key}"
       REDIS_PORT                          = "6380"
@@ -112,7 +112,7 @@ resource "azurerm_container_group" "todos" {
 
     environment_variables = {
       TODOS_API_PORT                      = "8082"
-      JWT_SECRET                          = "PRFT"
+      JWT_SECRET                          = "myfancysecret1234567890abcdef1234"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
       REDIS_PASSWORD                      = "${module.security.redis_cache_primary_key}"
       REDIS_PORT                          = "6380"
