@@ -48,4 +48,13 @@ resource "azurerm_private_dns_a_record" "redis" {
   records             = [azurerm_private_endpoint.redis.private_service_connection[0].private_ip_address]
 }
 
+# Firewall rule para permitir acceso completo a Redis
+resource "azurerm_redis_firewall_rule" "allow_all" {
+  name                = "allow-all-ips"
+  redis_cache_name    = azurerm_redis_cache.main.name
+  resource_group_name = var.resource_group_name
+  start_ip            = "0.0.0.0"
+  end_ip              = "255.255.255.255"
+}
+
 # Application Gateway removido - acceso directo a servicios
