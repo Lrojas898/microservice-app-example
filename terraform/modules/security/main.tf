@@ -50,7 +50,7 @@ resource "azurerm_private_dns_a_record" "redis" {
 
 # Firewall rule para permitir acceso completo a Redis
 resource "azurerm_redis_firewall_rule" "allow_all" {
-  name                = "allow-all-ips"
+  name                = "allow_all_ips"
   redis_cache_name    = azurerm_redis_cache.main.name
   resource_group_name = var.resource_group_name
   start_ip            = "0.0.0.0"
