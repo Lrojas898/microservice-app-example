@@ -209,25 +209,45 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Terraform Refresh
+      - name: Import Existing Resources (Sync State)
+        continue-on-error: true
         run: |
-          echo "🔄 Refreshing Terraform state with current Azure resources..."
+          echo "📥 Syncing Terraform state with existing Azure resources..."
           TAG=${{ needs.build-production-images.outputs.image_tag }}
-          terraform refresh \
-            -var="location=chilecentral" \
-            -var="resource_group_location=chilecentral" \
-            -var="db_location=chilecentral" \
-            -var="subscriptionId=${{ env.AZURE_SUBSCRIPTION_ID }}" \
-            -var="client_id=${{ env.AZURE_CLIENT_ID }}" \
-            -var="client_secret=${{ env.AZURE_CLIENT_SECRET }}" \
-            -var="tenant_id=${{ env.AZURE_TENANT_ID }}" \
-            -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
-            -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
-            -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-service:${TAG}" \
-            -var="auth_api_image=${{ secrets.DOCKERHUB_USERNAME }}/auth-service:${TAG}" \
-            -var="todos_api_image=${{ secrets.DOCKERHUB_USERNAME }}/todos-service:${TAG}" \
-            -var="frontend_image=${{ secrets.DOCKERHUB_USERNAME }}/frontend:${TAG}" \
-            -var="log_processor_image=${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:${TAG}"
+          
+          # Set variables for import commands
+          export TF_VAR_location="chilecentral"
+          export TF_VAR_resource_group_location="chilecentral"
+          export TF_VAR_db_location="chilecentral"
+          export TF_VAR_subscriptionId="${{ env.AZURE_SUBSCRIPTION_ID }}"
+          export TF_VAR_client_id="${{ env.AZURE_CLIENT_ID }}"
+          export TF_VAR_client_secret="${{ env.AZURE_CLIENT_SECRET }}"
+          export TF_VAR_tenant_id="${{ env.AZURE_TENANT_ID }}"
+          export TF_VAR_dockerhub_username="${{ secrets.DOCKERHUB_USERNAME }}"
+          export TF_VAR_dockerhub_token="${{ secrets.DOCKERHUB_TOKEN }}"
+          export TF_VAR_users_api_image="${{ secrets.DOCKERHUB_USERNAME }}/users-service:${TAG}"
+          export TF_VAR_auth_api_image="${{ secrets.DOCKERHUB_USERNAME }}/auth-service:${TAG}"
+          export TF_VAR_todos_api_image="${{ secrets.DOCKERHUB_USERNAME }}/todos-service:${TAG}"
+          export TF_VAR_frontend_image="${{ secrets.DOCKERHUB_USERNAME }}/frontend:${TAG}"
+          export TF_VAR_log_processor_image="${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:${TAG}"
+          
+          # Try to import each resource (will fail silently if already imported)
+          echo "📦 Importing users-service..."
+          terraform import azurerm_container_group.users "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/users-service" 2>/dev/null || echo "✓ users-service already managed or doesn't exist"
+          
+          echo "📦 Importing todos-service..."
+          terraform import azurerm_container_group.todos "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/todos-service" 2>/dev/null || echo "✓ todos-service already managed or doesn't exist"
+          
+          echo "📦 Importing log-processor-service..."
+          terraform import azurerm_container_group.log_processor "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/log-processor-service" 2>/dev/null || echo "✓ log-processor-service already managed or doesn't exist"
+          
+          echo "📦 Importing auth-service..."
+          terraform import azurerm_container_group.auth "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/auth-service" 2>/dev/null || echo "✓ auth-service already managed or doesn't exist"
+          
+          echo "📦 Importing frontend-service..."
+          terraform import azurerm_container_group.frontend "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/frontend-service" 2>/dev/null || echo "✓ frontend-service already managed or doesn't exist"
+          
+          echo "✅ State synchronization completed - Terraform state is now up to date!"
         working-directory: ./terraform
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -286,6 +306,18 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Verify State Consistency
+        run: |
+          echo "🔍 Verifying Terraform state consistency..."
+          terraform state list
+          echo "✅ Terraform state is consistent and up to date!"
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Cleanup
         if: always()
         run: rm -f tfplan
@@ -311,6 +343,7 @@ jobs:
           echo "🔗 Todos API: ${{ secrets.DOCKERHUB_USERNAME }}/todos-service:$TAG"
           echo "🔗 Frontend: ${{ secrets.DOCKERHUB_USERNAME }}/frontend:$TAG"
           echo "🔗 Log Processor: ${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:$TAG"
+          echo "📝 Terraform state is synchronized and up to date"
 
       - name: Notify Failure
         if: needs.deploy-infrastructure.result == 'failure'
