@@ -209,6 +209,32 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Terraform Refresh
+        run: |
+          echo "🔄 Refreshing Terraform state with current Azure resources..."
+          TAG=${{ needs.build-production-images.outputs.image_tag }}
+          terraform refresh \
+            -var="location=chilecentral" \
+            -var="resource_group_location=chilecentral" \
+            -var="db_location=chilecentral" \
+            -var="subscriptionId=${{ env.AZURE_SUBSCRIPTION_ID }}" \
+            -var="client_id=${{ env.AZURE_CLIENT_ID }}" \
+            -var="client_secret=${{ env.AZURE_CLIENT_SECRET }}" \
+            -var="tenant_id=${{ env.AZURE_TENANT_ID }}" \
+            -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
+            -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
+            -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-service:${TAG}" \
+            -var="auth_api_image=${{ secrets.DOCKERHUB_USERNAME }}/auth-service:${TAG}" \
+            -var="todos_api_image=${{ secrets.DOCKERHUB_USERNAME }}/todos-service:${TAG}" \
+            -var="frontend_image=${{ secrets.DOCKERHUB_USERNAME }}/frontend:${TAG}" \
+            -var="log_processor_image=${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:${TAG}"
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Terraform Plan
         id: plan
         run: |
