@@ -19,8 +19,8 @@ resource "azurerm_container_group" "zipkin" {
   container {
     name   = "zipkin-container"
     image  = "openzipkin/zipkin:latest"
-    cpu    = "1"
-    memory = "2"
+    cpu    = "0.5"
+    memory = "1"
 
     ports {
       port     = 9411
@@ -29,7 +29,7 @@ resource "azurerm_container_group" "zipkin" {
 
     environment_variables = {
       STORAGE_TYPE = "mem"
-      JAVA_OPTS    = "-Xms1024m -Xmx2048m"
+      JAVA_OPTS    = "-Xms512m -Xmx1024m"
     }
   }
 
@@ -69,11 +69,11 @@ resource "azurerm_container_group" "auth" {
       ZIPKIN_URL                          = "http://${azurerm_container_group.zipkin.ip_address}:9411/api/v2/spans"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
       REDIS_PASSWORD                      = "${module.security.redis_cache_primary_key}"
-      REDIS_PORT                          = "6380"
+      REDIS_PORT                          = "6379"
       SPRING_REDIS_HOST                   = "${module.security.redis_cache_hostname}"
       SPRING_REDIS_PASSWORD               = "${module.security.redis_cache_primary_key}"
-      SPRING_REDIS_PORT                   = "6380"
-      SPRING_REDIS_SSL                    = "true"
+      SPRING_REDIS_PORT                   = "6379"
+      SPRING_REDIS_SSL                    = "false"
       DB_HOST                             = "${azurerm_postgresql_flexible_server.consolidated.fqdn}"
       DB_NAME                             = "authdb"
       DB_USER                             = "${azurerm_postgresql_flexible_server.consolidated.administrator_login}"
@@ -97,7 +97,9 @@ resource "azurerm_container_group" "auth" {
 
   depends_on = [
     azurerm_container_group.zipkin,
-    azurerm_postgresql_flexible_server.consolidated
+    azurerm_postgresql_flexible_server.consolidated,
+    module.security,
+    azurerm_private_dns_zone_virtual_network_link.postgres
   ]
 }
 
@@ -175,12 +177,12 @@ resource "azurerm_container_group" "todos" {
       ZIPKIN_URL                          = "http://${azurerm_container_group.zipkin.ip_address}:9411/api/v2/spans"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
       REDIS_PASSWORD                      = "${module.security.redis_cache_primary_key}"
-      REDIS_PORT                          = "6380"
+      REDIS_PORT                          = "6379"
       REDIS_CHANNEL                       = "log_channel"
       SPRING_REDIS_HOST                   = "${module.security.redis_cache_hostname}"
       SPRING_REDIS_PASSWORD               = "${module.security.redis_cache_primary_key}"
-      SPRING_REDIS_PORT                   = "6380"
-      SPRING_REDIS_SSL                    = "true"
+      SPRING_REDIS_PORT                   = "6379"
+      SPRING_REDIS_SSL                    = "false"
       DB_HOST                             = "${azurerm_postgresql_flexible_server.consolidated.fqdn}"
       DB_NAME                             = "todosdb"
       DB_USER                             = "${azurerm_postgresql_flexible_server.consolidated.administrator_login}"
@@ -204,7 +206,9 @@ resource "azurerm_container_group" "todos" {
 
   depends_on = [
     azurerm_container_group.zipkin,
-    azurerm_postgresql_flexible_server.consolidated
+    azurerm_postgresql_flexible_server.consolidated,
+    module.security,
+    azurerm_private_dns_zone_virtual_network_link.postgres
   ]
 }
 
@@ -246,7 +250,7 @@ resource "azurerm_container_group" "log_processor" {
 
   depends_on = [
     azurerm_container_group.zipkin,
-    module.security
+    module.security.redis_cache_hostname
   ]
 }
 
