@@ -10,6 +10,12 @@ resource "azurerm_container_group" "zipkin" {
   ip_address_type     = "Public"
   os_type             = "Linux"
 
+  timeouts {
+    create = "60m"
+    update = "60m"
+    delete = "30m"
+  }
+
   container {
     name   = "zipkin-container"
     image  = "openzipkin/zipkin:latest"
@@ -38,6 +44,12 @@ resource "azurerm_container_group" "auth" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "Public"
   os_type             = "Linux"
+
+  timeouts {
+    create = "60m"
+    update = "60m"
+    delete = "30m"
+  }
 
   container {
     name   = "auth-container"
@@ -97,6 +109,12 @@ resource "azurerm_container_group" "users" {
   ip_address_type     = "Public"
   os_type             = "Linux"
 
+  timeouts {
+    create = "60m"
+    update = "60m"
+    delete = "30m"
+  }
+
   container {
     name   = "users-container"
     image  = var.users_api_image
@@ -133,6 +151,12 @@ resource "azurerm_container_group" "todos" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "Public"
   os_type             = "Linux"
+
+  timeouts {
+    create = "60m"
+    update = "60m"
+    delete = "30m"
+  }
 
   container {
     name   = "todos-container"
@@ -192,6 +216,12 @@ resource "azurerm_container_group" "log_processor" {
   ip_address_type     = "None" # No public IP needed
   os_type             = "Linux"
 
+  timeouts {
+    create = "60m"
+    update = "60m"
+    delete = "30m"
+  }
+
   container {
     name   = "log-processor-container"
     image  = var.log_processor_image
@@ -227,6 +257,12 @@ resource "azurerm_container_group" "frontend" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "Public"
   os_type             = "Linux"
+
+  timeouts {
+    create = "60m"
+    update = "60m"
+    delete = "30m"
+  }
 
   container {
     name   = "frontend-container"
