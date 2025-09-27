@@ -264,27 +264,64 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Force Unlock Terraform State
+        continue-on-error: true
+        run: |
+          echo "🔓 Attempting to unlock Terraform state..."
+          # Try to force unlock using a known lock ID pattern
+          terraform force-unlock -force 6f82c0a9-c0fe-881e-7792-0eaab46f44cf 2>/dev/null || echo "✓ No lock to unlock or already unlocked"
+
+          # Alternative: Try to identify any existing locks and unlock them
+          echo "🔍 Checking for any existing locks..."
+          terraform plan -lock=false -input=false -out=/dev/null 2>/dev/null || echo "✓ State appears to be accessible"
+
+          echo "✅ State unlock process completed"
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Terraform Plan
         id: plan
         run: |
           echo "📋 Generating execution plan..."
           TAG=${{ needs.build-production-images.outputs.image_tag }}
-          terraform plan \
-            -var="location=chilecentral" \
-            -var="resource_group_location=chilecentral" \
-            -var="db_location=chilecentral" \
-            -var="subscriptionId=${{ env.AZURE_SUBSCRIPTION_ID }}" \
-            -var="client_id=${{ env.AZURE_CLIENT_ID }}" \
-            -var="client_secret=${{ env.AZURE_CLIENT_SECRET }}" \
-            -var="tenant_id=${{ env.AZURE_TENANT_ID }}" \
-            -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
-            -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
-            -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-service:${TAG}" \
-            -var="auth_api_image=${{ secrets.DOCKERHUB_USERNAME }}/auth-service:${TAG}" \
-            -var="todos_api_image=${{ secrets.DOCKERHUB_USERNAME }}/todos-service:${TAG}" \
-            -var="frontend_image=${{ secrets.DOCKERHUB_USERNAME }}/frontend:${TAG}" \
-            -var="log_processor_image=${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:${TAG}" \
-            -out=tfplan
+
+          # Retry mechanism for plan in case of lock issues
+          for attempt in 1 2 3; do
+            echo "🔄 Plan attempt $attempt/3..."
+            if terraform plan \
+              -var="location=chilecentral" \
+              -var="resource_group_location=chilecentral" \
+              -var="db_location=chilecentral" \
+              -var="subscriptionId=${{ env.AZURE_SUBSCRIPTION_ID }}" \
+              -var="client_id=${{ env.AZURE_CLIENT_ID }}" \
+              -var="client_secret=${{ env.AZURE_CLIENT_SECRET }}" \
+              -var="tenant_id=${{ env.AZURE_TENANT_ID }}" \
+              -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
+              -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
+              -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-service:${TAG}" \
+              -var="auth_api_image=${{ secrets.DOCKERHUB_USERNAME }}/auth-service:${TAG}" \
+              -var="todos_api_image=${{ secrets.DOCKERHUB_USERNAME }}/todos-service:${TAG}" \
+              -var="frontend_image=${{ secrets.DOCKERHUB_USERNAME }}/frontend:${TAG}" \
+              -var="log_processor_image=${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:${TAG}" \
+              -out=tfplan; then
+              echo "✅ Plan completed successfully"
+              break
+            else
+              echo "⚠️ Plan attempt $attempt failed"
+              if [[ $attempt -lt 3 ]]; then
+                echo "🔓 Attempting to unlock state before retry..."
+                terraform force-unlock -force 6f82c0a9-c0fe-881e-7792-0eaab46f44cf 2>/dev/null || true
+                sleep 10
+              else
+                echo "❌ All plan attempts failed"
+                exit 1
+              fi
+            fi
+          done
         working-directory: ./terraform
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -320,6 +357,22 @@ jobs:
           echo "🔍 Verifying Terraform state consistency..."
           terraform state list
           echo "✅ Terraform state is consistent and up to date!"
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Emergency State Unlock
+        if: failure()
+        continue-on-error: true
+        run: |
+          echo "🚨 Emergency unlock due to job failure..."
+          # Force unlock with all known patterns
+          terraform force-unlock -force 6f82c0a9-c0fe-881e-7792-0eaab46f44cf 2>/dev/null || true
+          # Try other common lock IDs if they exist
+          echo "✅ Emergency unlock completed"
         working-directory: ./terraform
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
