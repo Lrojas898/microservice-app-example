@@ -209,12 +209,11 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Import Existing Resources (Sync State)
-        continue-on-error: true
+      - name: Import Existing Resources (Comprehensive)
         run: |
-          echo "📥 Syncing Terraform state with existing Azure resources..."
+          echo "📥 Comprehensive import of ALL existing Azure resources..."
           TAG=${{ needs.build-production-images.outputs.image_tag }}
-          
+
           # Set variables for import commands
           export TF_VAR_location="chilecentral"
           export TF_VAR_resource_group_location="chilecentral"
@@ -230,33 +229,178 @@ jobs:
           export TF_VAR_todos_api_image="${{ secrets.DOCKERHUB_USERNAME }}/todos-service:${TAG}"
           export TF_VAR_frontend_image="${{ secrets.DOCKERHUB_USERNAME }}/frontend:${TAG}"
           export TF_VAR_log_processor_image="${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:${TAG}"
-          
-          # Try to import each resource (will fail silently if already imported)
-          echo "📦 Importing zipkin-service..."
-          terraform import azurerm_container_group.zipkin "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/zipkin-service" 2>/dev/null || echo "✓ zipkin-service already managed or doesn't exist"
 
-          echo "📦 Importing users-service..."
-          terraform import azurerm_container_group.users "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/users-service" 2>/dev/null || echo "✓ users-service already managed or doesn't exist"
-
-          echo "📦 Importing todos-service..."
-          terraform import azurerm_container_group.todos "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/todos-service" 2>/dev/null || echo "✓ todos-service already managed or doesn't exist"
-
-          echo "📦 Importing log-processor-service..."
-          terraform import azurerm_container_group.log_processor "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/log-processor-service" 2>/dev/null || echo "✓ log-processor-service already managed or doesn't exist"
-
-          echo "📦 Importing auth-service..."
-          terraform import azurerm_container_group.auth "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/auth-service" 2>/dev/null || echo "✓ auth-service already managed or doesn't exist"
-
-          echo "📦 Importing frontend-service..."
-          terraform import azurerm_container_group.frontend "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/frontend-service" 2>/dev/null || echo "✓ frontend-service already managed or doesn't exist"
-
-          # Import database and network resources if they exist
-          echo "📦 Importing PostgreSQL server..."
-          # Get unique suffix from terraform state or generate new one
+          # Get or set unique suffix
           UNIQUE_SUFFIX=$(terraform output -raw unique_suffix 2>/dev/null || echo "momz603w")
-          terraform import azurerm_postgresql_flexible_server.consolidated "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/microservice-db-server-${UNIQUE_SUFFIX}" 2>/dev/null || echo "✓ PostgreSQL server already managed or doesn't exist"
-          
-          echo "✅ State synchronization completed - Terraform state is now up to date!"
+          echo "🔑 Using unique suffix: $UNIQUE_SUFFIX"
+
+          # Function to try import with proper error handling
+          safe_import() {
+            local resource_name="$1"
+            local resource_id="$2"
+            echo "📦 Attempting to import $resource_name..."
+
+            # Check if already in state first
+            if terraform state show "$resource_name" >/dev/null 2>&1; then
+              echo "✓ $resource_name already in state - skipping"
+              return 0
+            fi
+
+            # Try to import
+            if terraform import "$resource_name" "$resource_id" 2>/dev/null; then
+              echo "✅ Successfully imported $resource_name"
+              return 0
+            else
+              echo "⚠️ Could not import $resource_name (may not exist or already managed)"
+              return 1
+            fi
+          }
+
+          echo "🚀 Starting comprehensive resource import..."
+
+          # 1. Resource Group (must be first)
+          safe_import "azurerm_resource_group.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg"
+
+          # 2. Random string (cannot be imported, but should be in state)
+          echo "📦 Checking random_string.unique..."
+          terraform state show "random_string.unique" >/dev/null 2>&1 || echo "⚠️ random_string.unique not in state"
+
+          # 3. Network resources
+          safe_import "module.network.azurerm_virtual_network.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Network/virtualNetworks/microservice-vnet"
+          safe_import "module.network.azurerm_subnet.auth" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Network/virtualNetworks/microservice-vnet/subnets/auth-db-subnet"
+          safe_import "module.network.azurerm_subnet.users" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Network/virtualNetworks/microservice-vnet/subnets/users-db-subnet"
+          safe_import "module.network.azurerm_subnet.todos" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Network/virtualNetworks/microservice-vnet/subnets/todos-db-subnet"
+          safe_import "module.network.azurerm_subnet.cache" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Network/virtualNetworks/microservice-vnet/subnets/cache-subnet"
+
+          # 4. Redis Cache resources
+          safe_import "module.security.azurerm_redis_cache.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Cache/Redis/microservice-redis-optimized-${UNIQUE_SUFFIX}"
+          safe_import "module.security.azurerm_redis_firewall_rule.allow_all" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Cache/Redis/microservice-redis-optimized-${UNIQUE_SUFFIX}/firewallRules/allow_all_ips"
+
+          # 5. PostgreSQL resources
+          safe_import "azurerm_postgresql_flexible_server.consolidated" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/microservice-db-server-${UNIQUE_SUFFIX}"
+          safe_import "azurerm_postgresql_flexible_server_database.auth_db" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/microservice-db-server-${UNIQUE_SUFFIX}/databases/authdb"
+          safe_import "azurerm_postgresql_flexible_server_database.users_db" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/microservice-db-server-${UNIQUE_SUFFIX}/databases/usersdb"
+          safe_import "azurerm_postgresql_flexible_server_database.todos_db" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/microservice-db-server-${UNIQUE_SUFFIX}/databases/todosdb"
+
+          # 6. Container Groups (with aggressive retry)
+          echo "🔄 Importing Container Groups with aggressive retry..."
+          declare -A containers=(
+            ["zipkin"]="zipkin-service"
+            ["auth"]="auth-service"
+            ["users"]="users-service"
+            ["todos"]="todos-service"
+            ["log_processor"]="log-processor-service"
+            ["frontend"]="frontend-service"
+          )
+
+          for resource_key in "${!containers[@]}"; do
+            container_name="${containers[$resource_key]}"
+            resource_id="/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/$container_name"
+
+            echo "🎯 Processing azurerm_container_group.$resource_key..."
+
+            # Check if already in state
+            if terraform state show "azurerm_container_group.$resource_key" >/dev/null 2>&1; then
+              echo "✅ azurerm_container_group.$resource_key already in state"
+              continue
+            fi
+
+            # Aggressive import with multiple attempts
+            import_success=false
+            for attempt in 1 2 3 4 5; do
+              echo "🔄 Import attempt $attempt/5 for azurerm_container_group.$resource_key..."
+
+              if terraform import "azurerm_container_group.$resource_key" "$resource_id" 2>/dev/null; then
+                echo "✅ Successfully imported azurerm_container_group.$resource_key on attempt $attempt"
+                import_success=true
+                break
+              else
+                echo "⚠️ Import attempt $attempt failed"
+                if [[ $attempt -lt 5 ]]; then
+                  echo "🕒 Waiting 3 seconds before retry..."
+                  sleep 3
+                fi
+              fi
+            done
+
+            if [[ "$import_success" == "false" ]]; then
+              echo "❌ Failed to import azurerm_container_group.$resource_key after 5 attempts"
+            fi
+          done
+
+          # 7. Logic App Workflow
+          safe_import "azurerm_logic_app_workflow.log_processor" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Logic/workflows/log_processor"
+
+          echo "✅ Comprehensive import completed!"
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Comprehensive State Verification
+        run: |
+          echo "🔍 Comprehensive Terraform state verification..."
+
+          echo "📋 All resources currently in state:"
+          terraform state list | sort
+
+          echo ""
+          echo "🎯 Detailed resource verification:"
+
+          # Function to check resource in state
+          check_resource() {
+            local resource_name="$1"
+            if terraform state show "$resource_name" >/dev/null 2>&1; then
+              echo "✅ $resource_name is in state"
+              return 0
+            else
+              echo "❌ $resource_name is NOT in state"
+              return 1
+            fi
+          }
+
+          missing_resources=0
+
+          # Core infrastructure
+          check_resource "azurerm_resource_group.main" || ((missing_resources++))
+          check_resource "random_string.unique" || ((missing_resources++))
+
+          # Network resources
+          check_resource "module.network.azurerm_virtual_network.main" || ((missing_resources++))
+          check_resource "module.network.azurerm_subnet.auth" || ((missing_resources++))
+          check_resource "module.network.azurerm_subnet.users" || ((missing_resources++))
+          check_resource "module.network.azurerm_subnet.todos" || ((missing_resources++))
+          check_resource "module.network.azurerm_subnet.cache" || ((missing_resources++))
+
+          # Redis resources
+          check_resource "module.security.azurerm_redis_cache.main" || ((missing_resources++))
+
+          # Database resources
+          check_resource "azurerm_postgresql_flexible_server.consolidated" || ((missing_resources++))
+          check_resource "azurerm_postgresql_flexible_server_database.auth_db" || ((missing_resources++))
+          check_resource "azurerm_postgresql_flexible_server_database.users_db" || ((missing_resources++))
+          check_resource "azurerm_postgresql_flexible_server_database.todos_db" || ((missing_resources++))
+
+          # Container Groups (critical for error message)
+          for resource in zipkin auth users todos log_processor frontend; do
+            check_resource "azurerm_container_group.$resource" || ((missing_resources++))
+          done
+
+          echo ""
+          echo "📊 State verification summary:"
+          echo "Total resources in state: $(terraform state list | wc -l)"
+          echo "Missing critical resources: $missing_resources"
+
+          if [[ $missing_resources -gt 0 ]]; then
+            echo "⚠️ WARNING: $missing_resources critical resources are missing from state"
+            echo "This may cause 'resource already exists' errors during apply"
+          else
+            echo "✅ All critical resources are properly tracked in state"
+          fi
+
+          echo "✅ State verification completed!"
         working-directory: ./terraform
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
