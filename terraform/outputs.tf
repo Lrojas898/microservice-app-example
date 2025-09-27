@@ -85,3 +85,8 @@ output "frontend_service_ip" {
 output "frontend_url" {
   value = "http://${azurerm_container_group.frontend.ip_address}"
 }
+
+# Unique suffix for resource naming
+output "unique_suffix" {
+  value = random_string.unique.result
+}

@@ -33,6 +33,7 @@ resource "random_string" "unique" {
   special = false
   upper   = false
   keepers = {
-    region = var.db_location
+    region    = var.db_location
+    timestamp = "20250927"
   }
 }

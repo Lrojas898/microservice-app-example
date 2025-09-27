@@ -232,20 +232,29 @@ jobs:
           export TF_VAR_log_processor_image="${{ secrets.DOCKERHUB_USERNAME }}/log-message-processor:${TAG}"
           
           # Try to import each resource (will fail silently if already imported)
+          echo "📦 Importing zipkin-service..."
+          terraform import azurerm_container_group.zipkin "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/zipkin-service" 2>/dev/null || echo "✓ zipkin-service already managed or doesn't exist"
+
           echo "📦 Importing users-service..."
           terraform import azurerm_container_group.users "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/users-service" 2>/dev/null || echo "✓ users-service already managed or doesn't exist"
-          
+
           echo "📦 Importing todos-service..."
           terraform import azurerm_container_group.todos "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/todos-service" 2>/dev/null || echo "✓ todos-service already managed or doesn't exist"
-          
+
           echo "📦 Importing log-processor-service..."
           terraform import azurerm_container_group.log_processor "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/log-processor-service" 2>/dev/null || echo "✓ log-processor-service already managed or doesn't exist"
-          
+
           echo "📦 Importing auth-service..."
           terraform import azurerm_container_group.auth "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/auth-service" 2>/dev/null || echo "✓ auth-service already managed or doesn't exist"
-          
+
           echo "📦 Importing frontend-service..."
           terraform import azurerm_container_group.frontend "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/frontend-service" 2>/dev/null || echo "✓ frontend-service already managed or doesn't exist"
+
+          # Import database and network resources if they exist
+          echo "📦 Importing PostgreSQL server..."
+          # Get unique suffix from terraform state or generate new one
+          UNIQUE_SUFFIX=$(terraform output -raw unique_suffix 2>/dev/null || echo "momz603w")
+          terraform import azurerm_postgresql_flexible_server.consolidated "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/microservice-db-server-${UNIQUE_SUFFIX}" 2>/dev/null || echo "✓ PostgreSQL server already managed or doesn't exist"
           
           echo "✅ State synchronization completed - Terraform state is now up to date!"
         working-directory: ./terraform
