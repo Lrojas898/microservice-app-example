@@ -26,12 +26,10 @@ resource "azurerm_postgresql_flexible_server" "consolidated" {
   backup_retention_days = 7     # Mínimo para costos reducidos
   zone                  = "1"
 
-  # Configuración de red - usar la subnet de users como principal
-  delegated_subnet_id           = module.network.users_subnet_id
-  private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
-  public_network_access_enabled = false
+  # Configuración simplificada - acceso público temporalmente
+  public_network_access_enabled = true
 
-  depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
+  # depends_on temporalmente removido
 }
 
 # Bases de datos separadas en el mismo servidor
@@ -56,29 +54,27 @@ resource "azurerm_postgresql_flexible_server_database" "todos_db" {
   charset   = "utf8"
 }
 
-# DNS Privado para PostgreSQL
-resource "azurerm_private_dns_zone" "postgres" {
-  name                = "privatelink.postgres.database.azure.com"
-  resource_group_name = azurerm_resource_group.main.name
-}
+# DNS Privado temporalmente deshabilitado para evitar timeouts
+# resource "azurerm_private_dns_zone" "postgres" {
+#   name                = "privatelink.postgres.database.azure.com"
+#   resource_group_name = azurerm_resource_group.main.name
+# }
 
-resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
-  name                  = "postgres-vnet-link"
-  resource_group_name   = azurerm_resource_group.main.name
-  private_dns_zone_name = azurerm_private_dns_zone.postgres.name
-  virtual_network_id    = module.network.vnet_id
-  registration_enabled  = true
-}
+# resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
+#   name                  = "postgres-vnet-link"
+#   resource_group_name   = azurerm_resource_group.main.name
+#   private_dns_zone_name = azurerm_private_dns_zone.postgres.name
+#   virtual_network_id    = module.network.vnet_id
+#   registration_enabled  = true
+# }
 
-# Registro DNS para el servidor consolidado
-resource "azurerm_private_dns_cname_record" "consolidated_db" {
-  name                = "microservice-db-server-${random_string.unique.result}"
-  zone_name           = azurerm_private_dns_zone.postgres.name
-  resource_group_name = azurerm_resource_group.main.name
-  ttl                 = 300
-  record              = azurerm_postgresql_flexible_server.consolidated.fqdn
-
-  depends_on = [azurerm_postgresql_flexible_server.consolidated]
-}
+# resource "azurerm_private_dns_cname_record" "consolidated_db" {
+#   name                = "microservice-db-server-${random_string.unique.result}"
+#   zone_name           = azurerm_private_dns_zone.postgres.name
+#   resource_group_name = azurerm_resource_group.main.name
+#   ttl                 = 300
+#   record              = azurerm_postgresql_flexible_server.consolidated.fqdn
+#   depends_on = [azurerm_postgresql_flexible_server.consolidated]
+# }
 
 

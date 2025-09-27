@@ -10,12 +10,6 @@ resource "azurerm_container_group" "zipkin" {
   ip_address_type     = "Public"
   os_type             = "Linux"
 
-  timeouts {
-    create = "60m"
-    update = "60m"
-    delete = "30m"
-  }
-
   container {
     name   = "zipkin-container"
     image  = "openzipkin/zipkin:latest"
@@ -45,11 +39,6 @@ resource "azurerm_container_group" "auth" {
   ip_address_type     = "Public"
   os_type             = "Linux"
 
-  timeouts {
-    create = "60m"
-    update = "60m"
-    delete = "30m"
-  }
 
   container {
     name   = "auth-container"
@@ -98,8 +87,7 @@ resource "azurerm_container_group" "auth" {
   depends_on = [
     azurerm_container_group.zipkin,
     azurerm_postgresql_flexible_server.consolidated,
-    module.security,
-    azurerm_private_dns_zone_virtual_network_link.postgres
+    module.security
   ]
 }
 
@@ -111,11 +99,6 @@ resource "azurerm_container_group" "users" {
   ip_address_type     = "Public"
   os_type             = "Linux"
 
-  timeouts {
-    create = "60m"
-    update = "60m"
-    delete = "30m"
-  }
 
   container {
     name   = "users-container"
@@ -154,11 +137,6 @@ resource "azurerm_container_group" "todos" {
   ip_address_type     = "Public"
   os_type             = "Linux"
 
-  timeouts {
-    create = "60m"
-    update = "60m"
-    delete = "30m"
-  }
 
   container {
     name   = "todos-container"
@@ -207,8 +185,7 @@ resource "azurerm_container_group" "todos" {
   depends_on = [
     azurerm_container_group.zipkin,
     azurerm_postgresql_flexible_server.consolidated,
-    module.security,
-    azurerm_private_dns_zone_virtual_network_link.postgres
+    module.security
   ]
 }
 
@@ -220,11 +197,6 @@ resource "azurerm_container_group" "log_processor" {
   ip_address_type     = "None" # No public IP needed
   os_type             = "Linux"
 
-  timeouts {
-    create = "60m"
-    update = "60m"
-    delete = "30m"
-  }
 
   container {
     name   = "log-processor-container"
@@ -250,7 +222,7 @@ resource "azurerm_container_group" "log_processor" {
 
   depends_on = [
     azurerm_container_group.zipkin,
-    module.security.redis_cache_hostname
+    module.security
   ]
 }
 
@@ -262,11 +234,6 @@ resource "azurerm_container_group" "frontend" {
   ip_address_type     = "Public"
   os_type             = "Linux"
 
-  timeouts {
-    create = "60m"
-    update = "60m"
-    delete = "30m"
-  }
 
   container {
     name   = "frontend-container"
