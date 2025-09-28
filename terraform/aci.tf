@@ -8,7 +8,7 @@ resource "azurerm_log_analytics_workspace" "zipkin" {
   location            = var.location
   resource_group_name = var.resource_group_name
   sku                 = "PerGB2018"
-  retention_in_days   = 7
+  retention_in_days   = 30 # Mínimo para PerGB2018 SKU
 
   tags = {
     Environment = "production"
