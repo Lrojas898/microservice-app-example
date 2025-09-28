@@ -25,7 +25,7 @@ resource "azurerm_container_group" "auth" {
 
     environment_variables = {
       AUTH_API_PORT                       = "8000"
-      USERS_API_ADDRESS                   = "http://USERS_SERVICE_IP:8083" # Se actualiza post-deploy
+      USERS_API_ADDRESS                   = "http://${azurerm_container_group.users.ip_address}:8083"
       JWT_SECRET                          = "myfancysecret1234567890abcdef1234"
       ZIPKIN_URL                          = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
