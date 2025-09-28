@@ -233,6 +233,78 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Import Existing Resources (Smart Sync)
+        run: |
+          echo "🔍 Checking for existing Azure resources to import..."
+
+          # Get unique suffix from terraform or generate new one
+          UNIQUE_SUFFIX=$(terraform output -raw unique_suffix 2>/dev/null || echo "13ef44lc")
+          echo "🔑 Using unique suffix: $UNIQUE_SUFFIX"
+
+          # Function to safely import if resource exists in Azure
+          safe_import() {
+            local resource_name="$1"
+            local resource_id="$2"
+
+            echo "🔍 Checking if $resource_name exists in Azure..."
+
+            # Check if already in state
+            if terraform state show "$resource_name" >/dev/null 2>&1; then
+              echo "✓ $resource_name already in terraform state"
+              return 0
+            fi
+
+            # Try to import
+            if terraform import "$resource_name" "$resource_id" 2>/dev/null; then
+              echo "✅ Successfully imported $resource_name"
+              return 0
+            else
+              echo "ℹ️ $resource_name not found in Azure (will be created)"
+              return 1
+            fi
+          }
+
+          echo "🚀 Starting smart resource import..."
+
+          # Core infrastructure
+          safe_import "azurerm_resource_group.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg"
+          safe_import "module.network.azurerm_virtual_network.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Network/virtualNetworks/microservice-vnet"
+
+          # Network subnets
+          safe_import "module.network.azurerm_subnet.auth" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Network/virtualNetworks/microservice-vnet/subnets/auth-db-subnet"
+          safe_import "module.network.azurerm_subnet.users" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Network/virtualNetworks/microservice-vnet/subnets/users-db-subnet"
+          safe_import "module.network.azurerm_subnet.todos" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Network/virtualNetworks/microservice-vnet/subnets/todos-db-subnet"
+          safe_import "module.network.azurerm_subnet.cache" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Network/virtualNetworks/microservice-vnet/subnets/cache-subnet"
+
+          # Redis resources (likely exist based on error log)
+          safe_import "module.security.azurerm_redis_cache.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Cache/Redis/microservice-redis-optimized-${UNIQUE_SUFFIX}"
+          safe_import "module.security.azurerm_redis_firewall_rule.allow_all" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Cache/Redis/microservice-redis-optimized-${UNIQUE_SUFFIX}/firewallRules/allow_all_ips"
+
+          # Database resources
+          safe_import "azurerm_postgresql_flexible_server.consolidated" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/microservice-db-server-${UNIQUE_SUFFIX}"
+          safe_import "azurerm_postgresql_flexible_server_database.auth_db" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/microservice-db-server-${UNIQUE_SUFFIX}/databases/authdb"
+          safe_import "azurerm_postgresql_flexible_server_database.users_db" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/microservice-db-server-${UNIQUE_SUFFIX}/databases/usersdb"
+          safe_import "azurerm_postgresql_flexible_server_database.todos_db" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/microservice-db-server-${UNIQUE_SUFFIX}/databases/todosdb"
+
+          # Application Insights
+          safe_import "azurerm_logic_app_workflow.log_processor" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Logic/workflows/log_processor"
+
+          # Container Groups (likely don't exist due to the error)
+          for container in zipkin auth users todos log_processor frontend; do
+            container_name="${container//_/-}-service"
+            safe_import "azurerm_container_group.$container" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/$container_name"
+          done
+
+          echo "📊 Final state after import:"
+          terraform state list | sort
+          echo "✅ Smart import completed!"
+        working-directory: ./terraform
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
 
       - name: Terraform Plan
         id: plan
