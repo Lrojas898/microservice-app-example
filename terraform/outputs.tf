@@ -67,13 +67,18 @@ output "postgres_todos_password" {
 
 # Service Public URLs for direct access
 output "zipkin_service_url" {
-  value       = "https://${azurerm_container_app.zipkin.latest_revision_fqdn}"
-  description = "Zipkin Container App URL (Brazil South)"
+  value       = "http://${azurerm_public_ip.zipkin.ip_address}:9411"
+  description = "Zipkin VM URL"
 }
 
-output "zipkin_service_fqdn" {
-  value       = azurerm_container_app.zipkin.latest_revision_fqdn
-  description = "Zipkin Container App FQDN (Brazil South)"
+output "zipkin_service_ip" {
+  value       = azurerm_public_ip.zipkin.ip_address
+  description = "Zipkin VM Public IP"
+}
+
+output "zipkin_ssh_command" {
+  value       = "ssh -i zipkin-vm-key.pem azureuser@${azurerm_public_ip.zipkin.ip_address}"
+  description = "SSH command to connect to Zipkin VM"
 }
 
 output "auth_service_ip" {

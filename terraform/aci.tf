@@ -2,123 +2,8 @@
 
 # Container Groups únicamente - SIN Redis ni Application Gateway
 
-# Log Analytics Workspace para Container Apps en Brazil South
-resource "azurerm_log_analytics_workspace" "zipkin" {
-  name                = "zipkin-logs-${random_string.unique.result}"
-  location            = "eastus" # Región permitida y compatible con Container Apps
-  resource_group_name = var.resource_group_name
-  sku                 = "PerGB2018"
-  retention_in_days   = 30
-
-  tags = {
-    Environment = "production"
-    Service     = "zipkin-monitoring"
-    Region      = "east-us"
-  }
-
-  depends_on = [azurerm_resource_group.main]
-}
-
-# Container Apps Environment en Brazil South
-resource "azurerm_container_app_environment" "zipkin" {
-  name                       = "zipkin-env-${random_string.unique.result}"
-  location                   = "eastus" # Región permitida
-  resource_group_name        = var.resource_group_name
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.zipkin.id
-
-  tags = {
-    Environment = "production"
-    Service     = "zipkin-environment"
-    Region      = "east-us"
-  }
-
-  depends_on = [azurerm_resource_group.main]
-}
-
-# Zipkin Container App - ULTRA OPTIMIZADO en Brazil South
-resource "azurerm_container_app" "zipkin" {
-  name                         = "zipkin-app"
-  container_app_environment_id = azurerm_container_app_environment.zipkin.id
-  resource_group_name          = var.resource_group_name
-  revision_mode                = "Single"
-
-  template {
-    min_replicas = 1
-    max_replicas = 1
-
-    container {
-      name   = "zipkin"
-      image  = "openzipkin/zipkin-slim:latest"
-      cpu    = 0.25 # Mínimo para startup ultra-rápido
-      memory = "0.5Gi"
-
-      env {
-        name  = "STORAGE_TYPE"
-        value = "mem"
-      }
-      env {
-        name  = "JAVA_OPTS"
-        value = "-Xms64m -Xmx256m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom -XX:TieredStopAtLevel=1"
-      }
-      env {
-        name  = "LOGGING_LEVEL_ROOT"
-        value = "ERROR" # Logs mínimos
-      }
-      env {
-        name  = "SELF_TRACING_ENABLED"
-        value = "false"
-      }
-      env {
-        name  = "SEARCH_ENABLED"
-        value = "false" # Deshabilitado para startup más rápido
-      }
-
-      # Health probes optimizados
-      liveness_probe {
-        transport               = "HTTP"
-        port                    = 9411
-        path                    = "/health"
-        initial_delay           = 10
-        interval_seconds        = 30
-        timeout                 = 5
-        failure_count_threshold = 3
-      }
-
-      readiness_probe {
-        transport               = "HTTP"
-        port                    = 9411
-        path                    = "/health"
-        interval_seconds        = 10
-        timeout                 = 3
-        failure_count_threshold = 3
-        success_count_threshold = 1
-      }
-    }
-  }
-
-  # Ingress para acceso externo desde Chile
-  ingress {
-    external_enabled = true
-    target_port      = 9411
-    traffic_weight {
-      percentage      = 100
-      latest_revision = true
-    }
-  }
-
-  tags = {
-    Environment = "production"
-    Service     = "zipkin"
-    Performance = "ultra-fast"
-    Region      = "east-us"
-    CrossRegion = "chile-central"
-  }
-
-  depends_on = [
-    azurerm_container_app_environment.zipkin,
-    azurerm_resource_group.main
-  ]
-}
+# Zipkin ahora se despliega como VM (ver zipkin-vm.tf)
+# Configuración más estable y con control total del entorno
 resource "azurerm_container_group" "auth" {
   name                = "auth-service"
   location            = var.location
@@ -142,7 +27,7 @@ resource "azurerm_container_group" "auth" {
       AUTH_API_PORT                       = "8000"
       USERS_API_ADDRESS                   = "http://${azurerm_container_group.users.ip_address}:8083"
       JWT_SECRET                          = "myfancysecret1234567890abcdef1234"
-      ZIPKIN_URL                          = "https://${azurerm_container_app.zipkin.latest_revision_fqdn}/api/v2/spans"
+      ZIPKIN_URL                          = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
       REDIS_PASSWORD                      = "${module.security.redis_cache_primary_key}"
       REDIS_PORT                          = "6379"
@@ -201,7 +86,7 @@ resource "azurerm_container_group" "users" {
     environment_variables = {
       USERS_API_PORT = "8083"
       JWT_SECRET     = "myfancysecret1234567890abcdef1234"
-      ZIPKIN_URL     = "https://${azurerm_container_app.zipkin.latest_revision_fqdn}/api/v2/spans"
+      ZIPKIN_URL     = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
     }
   }
 
@@ -239,7 +124,7 @@ resource "azurerm_container_group" "todos" {
     environment_variables = {
       TODOS_API_PORT                      = "8082"
       JWT_SECRET                          = "myfancysecret1234567890abcdef1234"
-      ZIPKIN_URL                          = "https://${azurerm_container_app.zipkin.latest_revision_fqdn}/api/v2/spans"
+      ZIPKIN_URL                          = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
       REDIS_PASSWORD                      = "${module.security.redis_cache_primary_key}"
       REDIS_PORT                          = "6379"
@@ -296,7 +181,7 @@ resource "azurerm_container_group" "log_processor" {
       REDIS_PASSWORD = "${module.security.redis_cache_primary_key}"
       REDIS_PORT     = "6380"
       REDIS_CHANNEL  = "log_channel"
-      ZIPKIN_URL     = "https://${azurerm_container_app.zipkin.latest_revision_fqdn}/api/v2/spans"
+      ZIPKIN_URL     = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
       LOG_LEVEL      = "INFO"
     }
   }
@@ -337,7 +222,7 @@ resource "azurerm_container_group" "frontend" {
     environment_variables = {
       AUTH_API_ADDRESS  = "http://${azurerm_container_group.auth.ip_address}:8000"
       TODOS_API_ADDRESS = "http://${azurerm_container_group.todos.ip_address}:8082"
-      ZIPKIN_URL        = "https://${azurerm_container_app.zipkin.latest_revision_fqdn}/api/v2/spans"
+      ZIPKIN_URL        = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
     }
   }
 
