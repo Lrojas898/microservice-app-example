@@ -31,6 +31,10 @@ resource "azurerm_container_group" "zipkin" {
     Environment = "production"
     Service     = "zipkin"
   }
+
+  depends_on = [
+    azurerm_resource_group.main
+  ]
 }
 resource "azurerm_container_group" "auth" {
   name                = "auth-service"
@@ -85,6 +89,7 @@ resource "azurerm_container_group" "auth" {
   }
 
   depends_on = [
+    azurerm_resource_group.main,
     azurerm_container_group.zipkin,
     azurerm_postgresql_flexible_server.consolidated,
     module.security
@@ -125,6 +130,7 @@ resource "azurerm_container_group" "users" {
   }
 
   depends_on = [
+    azurerm_resource_group.main,
     azurerm_container_group.zipkin
   ]
 }
@@ -183,6 +189,7 @@ resource "azurerm_container_group" "todos" {
   }
 
   depends_on = [
+    azurerm_resource_group.main,
     azurerm_container_group.zipkin,
     azurerm_postgresql_flexible_server.consolidated,
     module.security
@@ -221,6 +228,7 @@ resource "azurerm_container_group" "log_processor" {
   }
 
   depends_on = [
+    azurerm_resource_group.main,
     azurerm_container_group.zipkin,
     module.security
   ]
@@ -261,6 +269,7 @@ resource "azurerm_container_group" "frontend" {
   }
 
   depends_on = [
+    azurerm_resource_group.main,
     azurerm_container_group.auth,
     azurerm_container_group.todos,
     azurerm_container_group.users,
