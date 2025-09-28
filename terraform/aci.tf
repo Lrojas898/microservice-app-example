@@ -15,8 +15,8 @@ resource "azurerm_container_group" "auth" {
   container {
     name   = "auth-container"
     image  = var.auth_api_image
-    cpu    = "0.5"
-    memory = "1"
+    cpu    = "0.25" # Mínimo para startup rápido
+    memory = "0.5"  # Reducido para velocidad
 
     ports {
       port     = 8000
@@ -25,7 +25,7 @@ resource "azurerm_container_group" "auth" {
 
     environment_variables = {
       AUTH_API_PORT                       = "8000"
-      USERS_API_ADDRESS                   = "http://${azurerm_container_group.users.ip_address}:8083"
+      USERS_API_ADDRESS                   = "http://USERS_SERVICE_IP:8083" # Se actualiza post-deploy
       JWT_SECRET                          = "myfancysecret1234567890abcdef1234"
       ZIPKIN_URL                          = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
@@ -75,8 +75,8 @@ resource "azurerm_container_group" "users" {
   container {
     name   = "users-container"
     image  = var.users_api_image
-    cpu    = "0.5"
-    memory = "1"
+    cpu    = "0.25" # Mínimo para startup rápido
+    memory = "0.5"  # Reducido para velocidad
 
     ports {
       port     = 8083
@@ -113,8 +113,8 @@ resource "azurerm_container_group" "todos" {
   container {
     name   = "todos-container"
     image  = var.todos_api_image
-    cpu    = "0.5"
-    memory = "1"
+    cpu    = "0.25" # Mínimo para startup rápido
+    memory = "0.5"  # Reducido para velocidad
 
     ports {
       port     = 8082
