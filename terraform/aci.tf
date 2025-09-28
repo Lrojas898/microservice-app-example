@@ -5,7 +5,7 @@
 # Log Analytics Workspace para Container Apps en Brazil South
 resource "azurerm_log_analytics_workspace" "zipkin" {
   name                = "zipkin-logs-${random_string.unique.result}"
-  location            = "brazilsouth" # Región compatible con Container Apps
+  location            = "eastus" # Región permitida y compatible con Container Apps
   resource_group_name = var.resource_group_name
   sku                 = "PerGB2018"
   retention_in_days   = 30
@@ -13,7 +13,7 @@ resource "azurerm_log_analytics_workspace" "zipkin" {
   tags = {
     Environment = "production"
     Service     = "zipkin-monitoring"
-    Region      = "brazil-south"
+    Region      = "east-us"
   }
 
   depends_on = [azurerm_resource_group.main]
@@ -22,14 +22,14 @@ resource "azurerm_log_analytics_workspace" "zipkin" {
 # Container Apps Environment en Brazil South
 resource "azurerm_container_app_environment" "zipkin" {
   name                       = "zipkin-env-${random_string.unique.result}"
-  location                   = "brazilsouth" # Región compatible
+  location                   = "eastus" # Región permitida
   resource_group_name        = var.resource_group_name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.zipkin.id
 
   tags = {
     Environment = "production"
     Service     = "zipkin-environment"
-    Region      = "brazil-south"
+    Region      = "east-us"
   }
 
   depends_on = [azurerm_resource_group.main]
@@ -110,7 +110,7 @@ resource "azurerm_container_app" "zipkin" {
     Environment = "production"
     Service     = "zipkin"
     Performance = "ultra-fast"
-    Region      = "brazil-south"
+    Region      = "east-us"
     CrossRegion = "chile-central"
   }
 
