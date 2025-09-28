@@ -65,13 +65,15 @@ output "postgres_todos_password" {
   sensitive = true
 }
 
-# Service Public IPs for direct access
-output "zipkin_service_ip" {
-  value = azurerm_container_group.zipkin.ip_address
+# Service Public URLs for direct access
+output "zipkin_service_url" {
+  value       = "https://${azurerm_container_app.zipkin.latest_revision_fqdn}"
+  description = "Zipkin Container App URL"
 }
 
-output "zipkin_service_url" {
-  value = "http://${azurerm_container_group.zipkin.ip_address}:9411"
+output "zipkin_service_fqdn" {
+  value       = azurerm_container_app.zipkin.latest_revision_fqdn
+  description = "Zipkin Container App FQDN"
 }
 
 output "auth_service_ip" {
