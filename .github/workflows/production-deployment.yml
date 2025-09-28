@@ -290,10 +290,8 @@ jobs:
           safe_import "azurerm_logic_app_workflow.log_processor" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.Logic/workflows/log_processor"
 
           # Container Groups (likely don't exist due to the error)
-          for container in zipkin auth users todos log_processor frontend; do
-            container_name="${container//_/-}-service"
-            safe_import "azurerm_container_group.$container" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/microservice-app-rg/providers/Microsoft.ContainerInstance/containerGroups/$container_name"
-          done
+          # Skip container import as they require runtime variables and likely don't exist
+          echo "ℹ️ Skipping container group imports (will be created fresh)"
 
           echo "📊 Final state after import:"
           terraform state list | sort
