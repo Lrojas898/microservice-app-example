@@ -10,7 +10,7 @@ resource "azurerm_container_group" "zipkin_optimized" {
 
   container {
     name   = "zipkin-container"
-    image  = "openzipkin/zipkin-slim:latest"  # IMAGEN MÁS LIVIANA
+    image  = "openzipkin/zipkin-slim:latest" # IMAGEN MÁS LIVIANA
     cpu    = "1.0"
     memory = "2.0"
 
@@ -25,8 +25,8 @@ resource "azurerm_container_group" "zipkin_optimized" {
       JAVA_OPTS = "-Xms512m -Xmx1024m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom -XX:TieredStopAtLevel=1"
       # Configuraciones adicionales para Azure
       SELF_TRACING_ENABLED = "false"
-      QUERY_ENABLED = "true"
-      SEARCH_ENABLED = "true"
+      QUERY_ENABLED        = "true"
+      SEARCH_ENABLED       = "true"
       # Reducir logs para startup más rápido
       LOGGING_LEVEL_ROOT = "WARN"
     }
@@ -38,7 +38,7 @@ resource "azurerm_container_group" "zipkin_optimized" {
         port   = 9411
         scheme = "Http"
       }
-      initial_delay_seconds = 30   # Reducido de default
+      initial_delay_seconds = 30 # Reducido de default
       period_seconds        = 10
       timeout_seconds       = 5
       failure_threshold     = 3
@@ -50,7 +50,7 @@ resource "azurerm_container_group" "zipkin_optimized" {
         port   = 9411
         scheme = "Http"
       }
-      initial_delay_seconds = 15   # Startup más rápido
+      initial_delay_seconds = 15 # Startup más rápido
       period_seconds        = 5
       timeout_seconds       = 3
       failure_threshold     = 3

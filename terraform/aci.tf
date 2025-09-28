@@ -13,8 +13,8 @@ resource "azurerm_container_group" "zipkin" {
   container {
     name   = "zipkin-container"
     image  = "openzipkin/zipkin:latest"
-    cpu    = "1.0"    # DUPLICADO: 0.5 → 1.0 vCPU
-    memory = "2.5"    # AUMENTADO: 1.5GB → 2.5GB
+    cpu    = "1.0" # DUPLICADO: 0.5 → 1.0 vCPU
+    memory = "2.5" # AUMENTADO: 1.5GB → 2.5GB
 
     ports {
       port     = 9411
@@ -24,7 +24,7 @@ resource "azurerm_container_group" "zipkin" {
     environment_variables = {
       STORAGE_TYPE = "mem"
       # JAVA_OPTS OPTIMIZADO para startup rápido
-      JAVA_OPTS    = "-Xms512m -Xmx1536m -XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxGCPauseMillis=100 -Djava.security.egd=file:/dev/./urandom"
+      JAVA_OPTS = "-Xms512m -Xmx1536m -XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxGCPauseMillis=100 -Djava.security.egd=file:/dev/./urandom"
     }
   }
 
