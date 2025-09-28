@@ -2,38 +2,40 @@
 
 # Container Groups únicamente - SIN Redis ni Application Gateway
 
-# Log Analytics Workspace para Container Apps
+# Log Analytics Workspace para Container Apps en Brazil South
 resource "azurerm_log_analytics_workspace" "zipkin" {
   name                = "zipkin-logs-${random_string.unique.result}"
-  location            = var.location
+  location            = "brazilsouth" # Región compatible con Container Apps
   resource_group_name = var.resource_group_name
   sku                 = "PerGB2018"
-  retention_in_days   = 30 # Mínimo para PerGB2018 SKU
+  retention_in_days   = 30
 
   tags = {
     Environment = "production"
     Service     = "zipkin-monitoring"
+    Region      = "brazil-south"
   }
 
   depends_on = [azurerm_resource_group.main]
 }
 
-# Container Apps Environment
+# Container Apps Environment en Brazil South
 resource "azurerm_container_app_environment" "zipkin" {
   name                       = "zipkin-env-${random_string.unique.result}"
-  location                   = var.location
+  location                   = "brazilsouth" # Región compatible
   resource_group_name        = var.resource_group_name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.zipkin.id
 
   tags = {
     Environment = "production"
     Service     = "zipkin-environment"
+    Region      = "brazil-south"
   }
 
   depends_on = [azurerm_resource_group.main]
 }
 
-# Zipkin Container App - ULTRA OPTIMIZADO
+# Zipkin Container App - ULTRA OPTIMIZADO en Brazil South
 resource "azurerm_container_app" "zipkin" {
   name                         = "zipkin-app"
   container_app_environment_id = azurerm_container_app_environment.zipkin.id
@@ -47,7 +49,7 @@ resource "azurerm_container_app" "zipkin" {
     container {
       name   = "zipkin"
       image  = "openzipkin/zipkin-slim:latest"
-      cpu    = 0.25 # Muy bajo para startup rápido
+      cpu    = 0.25 # Mínimo para startup ultra-rápido
       memory = "0.5Gi"
 
       env {
@@ -56,23 +58,27 @@ resource "azurerm_container_app" "zipkin" {
       }
       env {
         name  = "JAVA_OPTS"
-        value = "-Xms128m -Xmx256m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom -XX:TieredStopAtLevel=1"
+        value = "-Xms64m -Xmx256m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom -XX:TieredStopAtLevel=1"
       }
       env {
         name  = "LOGGING_LEVEL_ROOT"
-        value = "ERROR" # Logs mínimos para startup rápido
+        value = "ERROR" # Logs mínimos
       }
       env {
         name  = "SELF_TRACING_ENABLED"
         value = "false"
       }
+      env {
+        name  = "SEARCH_ENABLED"
+        value = "false" # Deshabilitado para startup más rápido
+      }
 
-      # Health probes optimizados para Container Apps
+      # Health probes optimizados
       liveness_probe {
         transport               = "HTTP"
         port                    = 9411
-        path                    = "/api/v2/services"
-        initial_delay           = 15
+        path                    = "/health"
+        initial_delay           = 10
         interval_seconds        = 30
         timeout                 = 5
         failure_count_threshold = 3
@@ -81,7 +87,7 @@ resource "azurerm_container_app" "zipkin" {
       readiness_probe {
         transport               = "HTTP"
         port                    = 9411
-        path                    = "/api/v2/services"
+        path                    = "/health"
         interval_seconds        = 10
         timeout                 = 3
         failure_count_threshold = 3
@@ -90,7 +96,7 @@ resource "azurerm_container_app" "zipkin" {
     }
   }
 
-  # Ingress para acceso externo
+  # Ingress para acceso externo desde Chile
   ingress {
     external_enabled = true
     target_port      = 9411
@@ -104,6 +110,8 @@ resource "azurerm_container_app" "zipkin" {
     Environment = "production"
     Service     = "zipkin"
     Performance = "ultra-fast"
+    Region      = "brazil-south"
+    CrossRegion = "chile-central"
   }
 
   depends_on = [

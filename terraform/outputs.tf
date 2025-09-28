@@ -68,12 +68,12 @@ output "postgres_todos_password" {
 # Service Public URLs for direct access
 output "zipkin_service_url" {
   value       = "https://${azurerm_container_app.zipkin.latest_revision_fqdn}"
-  description = "Zipkin Container App URL"
+  description = "Zipkin Container App URL (Brazil South)"
 }
 
 output "zipkin_service_fqdn" {
   value       = azurerm_container_app.zipkin.latest_revision_fqdn
-  description = "Zipkin Container App FQDN"
+  description = "Zipkin Container App FQDN (Brazil South)"
 }
 
 output "auth_service_ip" {
