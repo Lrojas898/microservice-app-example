@@ -10,6 +10,7 @@ resource "azurerm_container_group" "auth" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "Public"
   os_type             = "Linux"
+  restart_policy      = "Always"
 
 
   container {
@@ -23,9 +24,33 @@ resource "azurerm_container_group" "auth" {
       protocol = "TCP"
     }
 
+    liveness_probe {
+      http_get {
+        path   = "/actuator/health"
+        port   = 8000
+        scheme = "Http"
+      }
+      initial_delay_seconds = 30
+      period_seconds        = 10
+      timeout_seconds       = 5
+      failure_threshold     = 3
+    }
+
+    readiness_probe {
+      http_get {
+        path   = "/actuator/health"
+        port   = 8000
+        scheme = "Http"
+      }
+      initial_delay_seconds = 15
+      period_seconds        = 5
+      timeout_seconds       = 3
+      failure_threshold     = 3
+    }
+
     environment_variables = {
       AUTH_API_PORT                       = "8000"
-      USERS_API_ADDRESS                   = "http://${azurerm_container_group.users.ip_address}:8083"
+      USERS_API_ADDRESS                   = "http://placeholder-users:8083"
       JWT_SECRET                          = "myfancysecret1234567890abcdef1234"
       ZIPKIN_URL                          = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
@@ -70,6 +95,7 @@ resource "azurerm_container_group" "users" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "Public"
   os_type             = "Linux"
+  restart_policy      = "Always"
 
 
   container {
@@ -81,6 +107,30 @@ resource "azurerm_container_group" "users" {
     ports {
       port     = 8083
       protocol = "TCP"
+    }
+
+    liveness_probe {
+      http_get {
+        path   = "/actuator/health"
+        port   = 8083
+        scheme = "Http"
+      }
+      initial_delay_seconds = 30
+      period_seconds        = 10
+      timeout_seconds       = 5
+      failure_threshold     = 3
+    }
+
+    readiness_probe {
+      http_get {
+        path   = "/actuator/health"
+        port   = 8083
+        scheme = "Http"
+      }
+      initial_delay_seconds = 15
+      period_seconds        = 5
+      timeout_seconds       = 3
+      failure_threshold     = 3
     }
 
     environment_variables = {
@@ -108,6 +158,7 @@ resource "azurerm_container_group" "todos" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "Public"
   os_type             = "Linux"
+  restart_policy      = "Always"
 
 
   container {
@@ -119,6 +170,30 @@ resource "azurerm_container_group" "todos" {
     ports {
       port     = 8082
       protocol = "TCP"
+    }
+
+    liveness_probe {
+      http_get {
+        path   = "/actuator/health"
+        port   = 8082
+        scheme = "Http"
+      }
+      initial_delay_seconds = 30
+      period_seconds        = 10
+      timeout_seconds       = 5
+      failure_threshold     = 3
+    }
+
+    readiness_probe {
+      http_get {
+        path   = "/actuator/health"
+        port   = 8082
+        scheme = "Http"
+      }
+      initial_delay_seconds = 15
+      period_seconds        = 5
+      timeout_seconds       = 3
+      failure_threshold     = 3
     }
 
     environment_variables = {
@@ -168,6 +243,7 @@ resource "azurerm_container_group" "log_processor" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "None" # No public IP needed
   os_type             = "Linux"
+  restart_policy      = "Always"
 
 
   container {
@@ -179,7 +255,7 @@ resource "azurerm_container_group" "log_processor" {
     environment_variables = {
       REDIS_HOST     = "${module.security.redis_cache_hostname}"
       REDIS_PASSWORD = "${module.security.redis_cache_primary_key}"
-      REDIS_PORT     = "6380"
+      REDIS_PORT     = "6379"
       REDIS_CHANNEL  = "log_channel"
       ZIPKIN_URL     = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
       LOG_LEVEL      = "INFO"
@@ -205,6 +281,7 @@ resource "azurerm_container_group" "frontend" {
   resource_group_name = var.resource_group_name
   ip_address_type     = "Public"
   os_type             = "Linux"
+  restart_policy      = "Always"
 
 
   container {
