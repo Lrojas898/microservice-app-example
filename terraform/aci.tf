@@ -67,27 +67,25 @@ resource "azurerm_container_app" "zipkin" {
         value = "false"
       }
 
-      # Health probes optimizados
+      # Health probes optimizados para Container Apps
       liveness_probe {
-        http_get {
-          path = "/api/v2/services"
-          port = 9411
-        }
-        initial_delay_seconds = 15 # Reducido significativamente
-        period_seconds        = 30
-        timeout_seconds       = 5
-        failure_threshold     = 3
+        transport               = "HTTP"
+        port                    = 9411
+        path                    = "/api/v2/services"
+        initial_delay           = 15
+        interval_seconds        = 30
+        timeout                 = 5
+        failure_count_threshold = 3
       }
 
       readiness_probe {
-        http_get {
-          path = "/api/v2/services"
-          port = 9411
-        }
-        initial_delay_seconds = 5 # Muy rápido
-        period_seconds        = 10
-        timeout_seconds       = 3
-        failure_threshold     = 3
+        transport               = "HTTP"
+        port                    = 9411
+        path                    = "/api/v2/services"
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 3
+        success_count_threshold = 1
       }
     }
   }
