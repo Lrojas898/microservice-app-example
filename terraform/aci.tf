@@ -14,7 +14,7 @@ resource "azurerm_container_group" "zipkin" {
     name   = "zipkin-container"
     image  = "openzipkin/zipkin:latest"
     cpu    = "0.5"
-    memory = "1"
+    memory = "1.5"
 
     ports {
       port     = 9411
@@ -23,7 +23,7 @@ resource "azurerm_container_group" "zipkin" {
 
     environment_variables = {
       STORAGE_TYPE = "mem"
-      JAVA_OPTS    = "-Xms512m -Xmx1024m"
+      JAVA_OPTS    = "-Xms256m -Xmx512m"
     }
   }
 
