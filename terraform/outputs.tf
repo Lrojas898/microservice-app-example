@@ -66,6 +66,14 @@ output "postgres_todos_password" {
 }
 
 # Service Public IPs for direct access
+output "zipkin_service_ip" {
+  value = azurerm_container_group.zipkin.ip_address
+}
+
+output "zipkin_service_url" {
+  value = "http://${azurerm_container_group.zipkin.ip_address}:9411"
+}
+
 output "auth_service_ip" {
   value = azurerm_container_group.auth.ip_address
 }
