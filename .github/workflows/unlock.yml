@@ -41,7 +41,7 @@ jobs:
       - name: 🔓 Force Unlock Terraform State
         run: |
           echo "🔓 Forcing unlock of Terraform state..."
-          terraform force-unlock -force ee038196-114a-b5f4-3b69-71c52ad2fe3f
+          terraform force-unlock -force b420f6bc-0fb8-6794-5b51-3853223d3dca
         working-directory: ./terraform
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
