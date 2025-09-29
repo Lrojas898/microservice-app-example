@@ -12,15 +12,14 @@ NIVEL 0: Base (2-3 min)
                     │
                     ▼
 NIVEL 1: Infraestructura Core (3-4 min) - EN PARALELO
-┌─────────────────────┬─────────────────────┬─────────────────────┐
-│ module.security     │ PostgreSQL          │ Zipkin VM           │
-│ (Redis Cache)       │ Consolidated        │ (Independiente)     │
-│                     │                     │                     │
-│ - Redis Cache       │ - auth DB           │ - Public IP         │
-│ - Firewall rules    │ - users DB          │ - Security Group    │
-│ - Basic tier        │ - todos DB          │ - Network Interface │
-│                     │                     │ - Linux VM          │
-└─────────────────────┴─────────────────────┴─────────────────────┘
+┌─────────────────────┬─────────────────────┐
+│ module.security     │ PostgreSQL          │
+│ (Redis Cache)       │ Consolidated        │
+│                     │                     │
+│ - Redis Cache       │ - auth DB           │
+│ - Firewall rules    │ - users DB          │
+│ - Basic tier        │ - todos DB          │
+└─────────────────────┴─────────────────────┘
                     │
                     ▼
 NIVEL 2: Servicios Simples (2-3 min) - EN PARALELO
@@ -43,7 +42,6 @@ NIVEL 3: Servicios con DB (2-3 min) - EN PARALELO
 │ ✅ PostgreSQL (from Level 1)       │ ✅ PostgreSQL (from Level 1)       │
 │ ✅ Redis (from Level 1)            │ ✅ Redis (from Level 1)            │
 │ ✅ DockerHub image                  │ ✅ DockerHub image                  │
-│ ✅ Zipkin VM (from Level 1)        │ ✅ Zipkin VM (from Level 1)        │
 │ ⚠️ Users API (placeholder URL)     │ ❌ No external APIs needed         │
 └─────────────────────────────────────┴─────────────────────────────────────┘
                     │
@@ -55,7 +53,6 @@ NIVEL 4: Frontend (1-2 min)
 │ Dependencies:                       │
 │ ✅ auth-service IP (from Level 3)   │
 │ ✅ todos-service IP (from Level 3)  │
-│ ✅ Zipkin VM (from Level 1)        │
 │ ✅ DockerHub image                  │
 └─────────────────────────────────────┘
                     │
@@ -76,7 +73,7 @@ NIVEL 5: Finalización (1 min)
 - **Cuellos de botella**: Creación de VNet en Azure
 
 ### Nivel 1: Infraestructura
-- **Paralelización**: Redis + PostgreSQL + Zipkin VM en paralelo
+- **Paralelización**: Redis + PostgreSQL en paralelo
 - **Tiempo**: 3-4 minutos
 - **Cuellos de botella**: PostgreSQL provisioning
 - **Optimización**: VM es más rápida que containers

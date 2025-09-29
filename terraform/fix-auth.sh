@@ -32,8 +32,6 @@ az redis show --name microservice-redis-optimized-* --resource-group microservic
 echo "Users Service:"
 az container show --name users-service --resource-group microservice-app-rg --query "containers[0].instanceView.currentState.state" 2>/dev/null || echo "❌ Users service no encontrado"
 
-echo "Zipkin VM:"
-az vm show --name zipkin-vm --resource-group microservice-app-rg --query "powerState" 2>/dev/null || echo "❌ Zipkin VM no encontrado"
 
 # 4. Solución rápida: Deploy auth con configuración mínima
 echo ""

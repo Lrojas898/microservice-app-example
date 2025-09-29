@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🚀 Iniciando deploy ultra-rápido con orden optimizado..."
+echo "🚀 Iniciando deploy ultra-rápido con orden optimizado (sin Zipkin)..."
 
 # Configurar Terraform para máxima paralelización
 export TF_CLI_ARGS="-parallelism=20"
@@ -21,10 +21,6 @@ terraform apply -target=azurerm_resource_group.main \
 echo "🗄️ [Nivel 1] Desplegando servicios de infraestructura..."
 terraform apply -target=module.security \
                 -target=azurerm_postgresql_flexible_server.consolidated \
-                -target=azurerm_public_ip.zipkin \
-                -target=azurerm_network_security_group.zipkin \
-                -target=azurerm_network_interface.zipkin \
-                -target=azurerm_linux_virtual_machine.zipkin \
                 -auto-approve -var-file="terraform.tfvars"
 
 # NIVEL 2: Servicios simples sin dependencias críticas (2-3 minutos)
@@ -57,7 +53,6 @@ echo "✅ Deploy completado!"
 echo "⏱️ Tiempo total estimado: 10-15 minutos"
 echo ""
 echo "🌐 URLs finales:"
-terraform output zipkin_service_url
 terraform output frontend_url
 
 echo ""

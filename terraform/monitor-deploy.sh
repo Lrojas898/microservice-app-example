@@ -10,10 +10,11 @@ monitor_containers() {
     az container list --resource-group microservice-app-rg --output table --query "[].{Name:name,State:containers[0].instanceView.currentState.state,IP:ipAddress.ip}" 2>/dev/null || echo "ℹ️ Containers aún no creados"
 }
 
-# Función para mostrar estado de VM
-monitor_vm() {
-    echo "🖥️ Estado de Zipkin VM:"
-    az vm list --resource-group microservice-app-rg --output table --query "[].{Name:name,State:powerState}" 2>/dev/null || echo "ℹ️ VM aún no creada"
+# Función para mostrar estado de infraestructura
+monitor_infrastructure() {
+    echo "🏗️ Estado de infraestructura:"
+    echo "  PostgreSQL:" $(az postgres flexible-server list --resource-group microservice-app-rg --query "[0].state" -o tsv 2>/dev/null || echo "No creado")
+    echo "  Redis:" $(az redis list --resource-group microservice-app-rg --query "[0].provisioningState" -o tsv 2>/dev/null || echo "No creado")
 }
 
 # Función para mostrar progreso de terraform
@@ -33,7 +34,7 @@ while true; do
 
     monitor_terraform
     echo ""
-    monitor_vm
+    monitor_infrastructure
     echo ""
     monitor_containers
     echo ""

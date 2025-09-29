@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🐌 Deploy conservador - paso a paso con validación..."
+echo "🐌 Deploy conservador - paso a paso con validación (sin Zipkin)..."
 
 # Función para esperar y validar cada paso
 wait_and_validate() {
@@ -51,32 +51,24 @@ echo "🐘 [5/10] Creando PostgreSQL..."
 terraform apply -target=azurerm_postgresql_flexible_server.consolidated -auto-approve -var-file="terraform.tfvars"
 wait_and_validate "PostgreSQL" "az postgres flexible-server show --name postgres-consolidated-* --resource-group microservice-app-rg"
 
-# PASO 6: Zipkin VM
-echo "🖥️ [6/10] Creando Zipkin VM..."
-terraform apply -target=azurerm_public_ip.zipkin \
-                -target=azurerm_network_security_group.zipkin \
-                -target=azurerm_network_interface.zipkin \
-                -target=azurerm_linux_virtual_machine.zipkin \
-                -auto-approve -var-file="terraform.tfvars"
-wait_and_validate "Zipkin VM" "az vm show --name zipkin-vm --resource-group microservice-app-rg"
 
-# PASO 7: Users Service (sin dependencias complejas)
-echo "👥 [7/10] Creando Users Service..."
+# PASO 6: Users Service (sin dependencias complejas)
+echo "👥 [6/9] Creando Users Service..."
 terraform apply -target=azurerm_container_group.users -auto-approve -var-file="terraform.tfvars"
 wait_and_validate "Users Service" "az container show --name users-service --resource-group microservice-app-rg"
 
-# PASO 8: Auth Service
-echo "🔐 [8/10] Creando Auth Service..."
+# PASO 7: Auth Service
+echo "🔐 [7/9] Creando Auth Service..."
 terraform apply -target=azurerm_container_group.auth -auto-approve -var-file="terraform.tfvars"
 wait_and_validate "Auth Service" "az container show --name auth-service --resource-group microservice-app-rg"
 
-# PASO 9: Todos Service
-echo "📝 [9/10] Creando Todos Service..."
+# PASO 8: Todos Service
+echo "📝 [8/9] Creando Todos Service..."
 terraform apply -target=azurerm_container_group.todos -auto-approve -var-file="terraform.tfvars"
 wait_and_validate "Todos Service" "az container show --name todos-service --resource-group microservice-app-rg"
 
-# PASO 10: Frontend y Log Processor
-echo "🌐 [10/10] Creando Frontend y Log Processor..."
+# PASO 9: Frontend y Log Processor
+echo "🌐 [9/9] Creando Frontend y Log Processor..."
 terraform apply -target=azurerm_container_group.frontend \
                 -target=azurerm_container_group.log_processor \
                 -auto-approve -var-file="terraform.tfvars"
@@ -90,5 +82,4 @@ echo "✅ Deploy conservador completado!"
 echo "⏱️ Este método es más lento pero más confiable para debugging"
 echo ""
 echo "🌐 URLs finales:"
-terraform output zipkin_service_url
 terraform output frontend_url
