@@ -1,4 +1,4 @@
-FROM golang:1.18-alpine AS builder
+FROM golang:1.21-alpine AS builder
 
 # Instalar git (requerido para dependencias)
 RUN apk add --no-cache git
@@ -6,13 +6,17 @@ RUN apk add --no-cache git
 # Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos Go
+# Copiar go.mod y go.sum primero para mejor caching
+COPY go.mod go.sum ./
+
+# Descargar dependencias
+RUN go mod download
+
+# Copiar el resto de los archivos Go
 COPY . .
 
-# Configurar módulos Go (basado en tu README.md)
+# Configurar módulos Go
 ENV GO111MODULE=on
-RUN if [ ! -f go.mod ]; then go mod init github.com/bortizf/microservice-app-example/auth-api; fi
-RUN go mod tidy
 
 # Construir el binario
 RUN CGO_ENABLED=0 GOOS=linux go build -o auth-service .
