@@ -4,7 +4,7 @@ resource "azurerm_service_plan" "main" {
   resource_group_name = azurerm_resource_group.main.name
   location            = var.location
   os_type             = "Linux"
-  sku_name            = "B1"  # Basic - Rápido y económico
+  sku_name            = "B1" # Basic - Rápido y económico
 }
 
 # Users Service
@@ -16,8 +16,8 @@ resource "azurerm_linux_web_app" "users" {
 
   site_config {
     application_stack {
-      docker_image_name   = var.users_api_image
-      docker_registry_url = "https://index.docker.io"
+      docker_image_name        = var.users_api_image
+      docker_registry_url      = "https://index.docker.io"
       docker_registry_username = var.dockerhub_username
       docker_registry_password = var.dockerhub_token
     }
@@ -26,9 +26,9 @@ resource "azurerm_linux_web_app" "users" {
   }
 
   app_settings = {
-    "USERS_API_PORT"    = "8083"
-    "JWT_SECRET"        = "myfancysecret1234567890abcdef1234"
-    "WEBSITES_PORT"     = "8083"
+    "USERS_API_PORT" = "8083"
+    "JWT_SECRET"     = "myfancysecret1234567890abcdef1234"
+    "WEBSITES_PORT"  = "8083"
   }
 }
 
@@ -41,8 +41,8 @@ resource "azurerm_linux_web_app" "auth" {
 
   site_config {
     application_stack {
-      docker_image_name   = var.auth_api_image
-      docker_registry_url = "https://index.docker.io"
+      docker_image_name        = var.auth_api_image
+      docker_registry_url      = "https://index.docker.io"
       docker_registry_username = var.dockerhub_username
       docker_registry_password = var.dockerhub_token
     }
@@ -84,8 +84,8 @@ resource "azurerm_linux_web_app" "todos" {
 
   site_config {
     application_stack {
-      docker_image_name   = var.todos_api_image
-      docker_registry_url = "https://index.docker.io"
+      docker_image_name        = var.todos_api_image
+      docker_registry_url      = "https://index.docker.io"
       docker_registry_username = var.dockerhub_username
       docker_registry_password = var.dockerhub_token
     }
@@ -127,8 +127,8 @@ resource "azurerm_linux_web_app" "frontend" {
 
   site_config {
     application_stack {
-      docker_image_name   = var.frontend_image
-      docker_registry_url = "https://index.docker.io"
+      docker_image_name        = var.frontend_image
+      docker_registry_url      = "https://index.docker.io"
       docker_registry_username = var.dockerhub_username
       docker_registry_password = var.dockerhub_token
     }
@@ -151,8 +151,8 @@ resource "azurerm_linux_web_app" "log_processor" {
 
   site_config {
     application_stack {
-      docker_image_name   = var.log_processor_image
-      docker_registry_url = "https://index.docker.io"
+      docker_image_name        = var.log_processor_image
+      docker_registry_url      = "https://index.docker.io"
       docker_registry_username = var.dockerhub_username
       docker_registry_password = var.dockerhub_token
     }
