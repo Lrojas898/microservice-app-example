@@ -13,17 +13,14 @@ variable "cache_subnet_id" {
   type        = string
 }
 
-variable "gateway_subnet_id" {
-  description = "ID de la subnet para Application Gateway"
-  type        = string
-}
-
 variable "vnet_id" {
   description = "ID de la red virtual principal para DNS link"
   type        = string
 }
 
-variable "frontend_container_ip" {
-  description = "IP privada del contenedor frontend para Application Gateway"
+# Application Gateway variables removed - no longer needed
+
+variable "unique_suffix" {
+  description = "Sufijo único para nombres de recursos"
   type        = string
 }

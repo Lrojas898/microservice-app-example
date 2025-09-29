@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
 )
@@ -51,20 +53,33 @@ func (h *UserService) Login(ctx context.Context, username, password string) (Use
 func (h *UserService) getUser(ctx context.Context, username string) (User, error) {
 	var user User
 
+	log.Printf("DEBUG: Getting user %s, UserAPIAddress: %s", username, h.UserAPIAddress)
+
 	token, err := h.getUserAPIToken(username)
 	if err != nil {
+		log.Printf("DEBUG: Token generation failed: %v", err)
 		return user, err
 	}
+
 	url := fmt.Sprintf("%s/users/%s", h.UserAPIAddress, username)
-	req, _ := http.NewRequest("GET", url, nil)
+	log.Printf("DEBUG: Making request to URL: %s", url)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Printf("DEBUG: NewRequest failed: %v", err)
+		return user, err
+	}
 	req.Header.Add("Authorization", "Bearer "+token)
 
 	req = req.WithContext(ctx)
 
+	log.Printf("DEBUG: About to make HTTP request...")
 	resp, err := h.Client.Do(req)
 	if err != nil {
+		log.Printf("DEBUG: HTTP request failed: %v", err)
 		return user, err
 	}
+	log.Printf("DEBUG: HTTP request successful, status: %s", resp.Status)
 
 	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
@@ -73,6 +88,7 @@ func (h *UserService) getUser(ctx context.Context, username string) (User, error
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Printf("DEBUG: HTTP %d response body: %s", resp.StatusCode, string(bodyBytes))
 		return user, fmt.Errorf("could not get user data: %s", string(bodyBytes))
 	}
 
@@ -86,5 +102,6 @@ func (h *UserService) getUserAPIToken(username string) (string, error) {
 	claims := token.Claims.(jwt.MapClaims)
 	claims["username"] = username
 	claims["scope"] = "read"
+	claims["exp"] = time.Now().Add(time.Hour).Unix() // Expira en 1 hora
 	return token.SignedString([]byte(jwtSecret))
 }

@@ -7,7 +7,6 @@ on:
       - 'terraform/**'
   pull_request:
     branches: [ master ]
-    # REMOVIDO: paths filter para que siempre se ejecute en PRs hacia master
     types: [opened, synchronize, reopened]
 
 env:

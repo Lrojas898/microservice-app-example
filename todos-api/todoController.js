@@ -51,15 +51,30 @@ class TodoController {
     }
 
     _logOperation (opName, username, todoId) {
-        this._tracer.scoped(() => {
-            const traceId = this._tracer.id;
-            this._redisClient.publish(this._logChannel, JSON.stringify({
-                zipkinSpan: traceId,
-                opName: opName,
-                username: username,
-                todoId: todoId,
-            }))
-        })
+        console.log(`TODO Operation: ${opName} by ${username} on todo ${todoId}`);
+
+        // Try to log to Redis, but don't crash if it fails
+        try {
+            if (this._redisClient && this._redisClient.connected) {
+                this._tracer.scoped(() => {
+                    const traceId = this._tracer.id;
+                    this._redisClient.publish(this._logChannel, JSON.stringify({
+                        zipkinSpan: traceId,
+                        opName: opName,
+                        username: username,
+                        todoId: todoId,
+                    }), (err) => {
+                        if (err) {
+                            console.log(`Redis publish error: ${err.message}`);
+                        }
+                    });
+                });
+            } else {
+                console.log('Redis client not connected, skipping log to Redis');
+            }
+        } catch (error) {
+            console.log(`Redis logging error: ${error.message}`);
+        }
     }
 
     _getTodoData (userID) {

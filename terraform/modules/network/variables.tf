@@ -28,32 +28,11 @@ variable "todos_subnet_prefix" {
   type        = string
 }
 
-variable "gateway_subnet_prefix" {
-  description = "Prefijo de dirección para la subnet del Gateway"
-  type        = string
-}
+# Gateway subnet prefix removed - Application Gateway eliminated
 
 variable "cache_subnet_prefix" {
   description = "Prefijo de dirección para la subnet de Cache"
   type        = string
 }
 
-variable "auth_container_subnet_prefix" {
-  description = "Prefijo de dirección para la subnet de Auth Container"
-  type        = string
-}
-
-variable "users_container_subnet_prefix" {
-  description = "Prefijo de dirección para la subnet de Users Container"
-  type        = string
-}
-
-variable "todos_container_subnet_prefix" {
-  description = "Prefijo de dirección para la subnet de Todos Container"
-  type        = string
-}
-
-variable "frontend_container_subnet_prefix" {
-  description = "Prefijo de dirección para la subnet de Frontend Container"
-  type        = string
-}
+# Container subnet prefixes removed - using public IPs for direct access

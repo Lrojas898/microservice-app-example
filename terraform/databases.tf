@@ -1,104 +1,80 @@
-# Generación de contraseñas aleatorias para las bases de datos
-resource "random_password" "postgres_auth_password" {
-  count   = var.postgres_auth_password == null ? 1 : 0
+
+# Optimización de Costos: Bases de Datos Consolidadas
+# Ahorro estimado: ~70% en costos de base de datos
+
+# Generación de contraseña única para el servidor consolidado
+resource "random_password" "postgres_consolidated_password" {
   length  = 16
-  special = true
+  special = false
+  upper   = true
+  lower   = true
+  numeric = true
 }
 
-resource "random_password" "postgres_users_password" {
-  count   = var.postgres_users_password == null ? 1 : 0
-  length  = 16
-  special = true
-}
-
-resource "random_password" "postgres_todos_password" {
-  count   = var.postgres_todos_password == null ? 1 : 0
-  length  = 16
-  special = true
-}
-
-# PostgreSQL Flexible Server para Auth Service
-resource "azurerm_postgresql_flexible_server" "auth" {
-  name                   = "auth-db-server"
+# UN SOLO servidor PostgreSQL Flexible para todos los servicios
+resource "azurerm_postgresql_flexible_server" "consolidated" {
+  name                   = "microservice-db-server-${random_string.unique.result}"
   resource_group_name    = azurerm_resource_group.main.name
   location               = var.db_location
   version                = "13"
   administrator_login    = "adminuser"
-  administrator_password = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
+  administrator_password = random_password.postgres_consolidated_password.result
 
+  # SKU más pequeño para desarrollo/pruebas
   sku_name              = "B_Standard_B1ms"
-  storage_mb            = 32768
-  backup_retention_days = 7
+  storage_mb            = 32768 # 32GB es el mínimo
+  backup_retention_days = 7     # Mínimo para costos reducidos
   zone                  = "1"
 
-  # Configuración de red simplificada
-  delegated_subnet_id           = module.network.auth_subnet_id
-  private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
-  public_network_access_enabled = false
+  # Configuración simplificada - acceso público temporalmente
+  public_network_access_enabled = true
 
-  depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
+  # depends_on temporalmente removido
 }
 
-## Nota: Eliminado el recurso de base de datos para evitar fallo de esquema en el provider. La app usará DB_NAME estático.
-
-# PostgreSQL Flexible Server para Users Service
-resource "azurerm_postgresql_flexible_server" "users" {
-  name                   = "users-db-server"
-  resource_group_name    = azurerm_resource_group.main.name
-  location               = var.db_location
-  version                = "13"
-  administrator_login    = "adminuser"
-  administrator_password = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
-
-  sku_name              = "B_Standard_B1ms"
-  storage_mb            = 32768
-  backup_retention_days = 7
-  zone                  = "1"
-
-  # Configuración de red
-  delegated_subnet_id           = module.network.users_subnet_id
-  private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
-  public_network_access_enabled = false
-
-  depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
+# Bases de datos separadas en el mismo servidor
+resource "azurerm_postgresql_flexible_server_database" "auth_db" {
+  name      = "authdb"
+  server_id = azurerm_postgresql_flexible_server.consolidated.id
+  collation = "en_US.utf8"
+  charset   = "utf8"
 }
 
-## Nota: Eliminado el recurso de base de datos; la app usará DB_NAME estático.
-
-# PostgreSQL Flexible Server para Todos Service
-resource "azurerm_postgresql_flexible_server" "todos" {
-  name                   = "todos-db-server"
-  resource_group_name    = azurerm_resource_group.main.name
-  location               = var.db_location
-  version                = "13"
-  administrator_login    = "adminuser"
-  administrator_password = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
-
-  sku_name              = "B_Standard_B1ms"
-  storage_mb            = 32768
-  backup_retention_days = 7
-  zone                  = "1"
-
-  # Configuración de red
-  delegated_subnet_id           = module.network.todos_subnet_id
-  private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
-  public_network_access_enabled = false
-
-  depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
+resource "azurerm_postgresql_flexible_server_database" "users_db" {
+  name      = "usersdb"
+  server_id = azurerm_postgresql_flexible_server.consolidated.id
+  collation = "en_US.utf8"
+  charset   = "utf8"
 }
 
-## Nota: Eliminado el recurso de base de datos; la app usará DB_NAME estático.
-
-# DNS Privado para PostgreSQL
-resource "azurerm_private_dns_zone" "postgres" {
-  name                = "privatelink.postgres.database.azure.com"
-  resource_group_name = azurerm_resource_group.main.name
+resource "azurerm_postgresql_flexible_server_database" "todos_db" {
+  name      = "todosdb"
+  server_id = azurerm_postgresql_flexible_server.consolidated.id
+  collation = "en_US.utf8"
+  charset   = "utf8"
 }
 
-resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
-  name                  = "postgres-vnet-link"
-  resource_group_name   = azurerm_resource_group.main.name
-  private_dns_zone_name = azurerm_private_dns_zone.postgres.name
-  virtual_network_id    = module.network.vnet_id
-  registration_enabled  = false
-}
+# DNS Privado temporalmente deshabilitado para evitar timeouts
+# resource "azurerm_private_dns_zone" "postgres" {
+#   name                = "privatelink.postgres.database.azure.com"
+#   resource_group_name = azurerm_resource_group.main.name
+# }
+
+# resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
+#   name                  = "postgres-vnet-link"
+#   resource_group_name   = azurerm_resource_group.main.name
+#   private_dns_zone_name = azurerm_private_dns_zone.postgres.name
+#   virtual_network_id    = module.network.vnet_id
+#   registration_enabled  = true
+# }
+
+# resource "azurerm_private_dns_cname_record" "consolidated_db" {
+#   name                = "microservice-db-server-${random_string.unique.result}"
+#   zone_name           = azurerm_private_dns_zone.postgres.name
+#   resource_group_name = azurerm_resource_group.main.name
+#   ttl                 = 300
+#   record              = azurerm_postgresql_flexible_server.consolidated.fqdn
+#   depends_on = [azurerm_postgresql_flexible_server.consolidated]
+# }
+
+

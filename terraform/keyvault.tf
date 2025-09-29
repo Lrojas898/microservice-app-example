@@ -1,88 +1,37 @@
-# Data source para obtener información del cliente actual
-data "azurerm_client_config" "current" {}
+# ARCHIVO TEMPORALMENTE DESHABILITADO
+# Key Vault causa errores de permisos 403
+# Este archivo está deshabilitado hasta resolver los permisos en Azure
 
-# Azure Key Vault para almacenar secretos
-resource "azurerm_key_vault" "main" {
-  name                = var.key_vault_name
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  tenant_id           = data.azurerm_client_config.current.tenant_id
-  sku_name            = "standard"
+# Para rehabilitar:
+# 1. Resolver permisos en Azure Portal para el Key Vault 'microservice-kv'
+# 2. Descomentar el contenido de este archivo
+# 3. Ejecutar terraform plan && terraform apply
 
-  # Habilitar acceso desde Azure AD
-  enabled_for_disk_encryption     = true
-  enabled_for_deployment          = true
-  enabled_for_template_deployment = true
-  purge_protection_enabled        = false
+# CONTENIDO COMENTADO:
 
-  # Garantizar que el grupo de recursos exista antes de crear el Key Vault
-  depends_on = [azurerm_resource_group.main]
-}
+# data "azurerm_client_config" "current" {}
 
-# Política de acceso para el service principal actual (GitHub Actions)
-resource "azurerm_key_vault_access_policy" "current" {
-  key_vault_id = azurerm_key_vault.main.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = data.azurerm_client_config.current.object_id
+# resource "azurerm_key_vault" "main" {
+#   name                = var.key_vault_name
+#   location            = azurerm_resource_group.main.location
+#   resource_group_name = azurerm_resource_group.main.name
+#   tenant_id           = data.azurerm_client_config.current.tenant_id
+#   sku_name            = "standard"
+#   enabled_for_disk_encryption     = true
+#   enabled_for_deployment          = true
+#   enabled_for_template_deployment = true
+#   purge_protection_enabled        = false
+#   depends_on = [azurerm_resource_group.main]
+# }
 
-  secret_permissions = [
-    "Get",
-    "List",
-    "Set",
-    "Delete",
-    "Backup",
-    "Restore",
-    "Recover",
-    "Purge"
-  ]
+# resource "azurerm_key_vault_access_policy" "current" {
+#   key_vault_id = azurerm_key_vault.main.id
+#   tenant_id    = data.azurerm_client_config.current.tenant_id
+#   object_id    = data.azurerm_client_config.current.object_id
+#   secret_permissions = ["Get", "List", "Set", "Delete", "Backup", "Restore", "Recover", "Purge"]
+#   key_permissions = ["Get", "List", "Create", "Delete", "Update", "Import", "Backup", "Restore", "Recover"]
+#   certificate_permissions = ["Get", "List", "Create", "Delete", "Update", "Import", "Backup", "Restore", "Recover"]
+# }
 
-  key_permissions = [
-    "Get",
-    "List",
-    "Create",
-    "Delete",
-    "Update",
-    "Import",
-    "Backup",
-    "Restore",
-    "Recover"
-  ]
-
-  certificate_permissions = [
-    "Get",
-    "List",
-    "Create",
-    "Delete",
-    "Update",
-    "Import",
-    "Backup",
-    "Restore",
-    "Recover"
-  ]
-}
-
-# Las contraseñas aleatorias se generan en databases.tf
-# Almacenar contraseñas en Key Vault
-resource "azurerm_key_vault_secret" "postgres_auth_password" {
-  name         = "postgres-auth-password"
-  value        = var.postgres_auth_password != null ? var.postgres_auth_password : random_password.postgres_auth_password[0].result
-  key_vault_id = azurerm_key_vault.main.id
-
-  depends_on = [azurerm_key_vault_access_policy.current]
-}
-
-resource "azurerm_key_vault_secret" "postgres_users_password" {
-  name         = "postgres-users-password"
-  value        = var.postgres_users_password != null ? var.postgres_users_password : random_password.postgres_users_password[0].result
-  key_vault_id = azurerm_key_vault.main.id
-
-  depends_on = [azurerm_key_vault_access_policy.current]
-}
-
-resource "azurerm_key_vault_secret" "postgres_todos_password" {
-  name         = "postgres-todos-password"
-  value        = var.postgres_todos_password != null ? var.postgres_todos_password : random_password.postgres_todos_password[0].result
-  key_vault_id = azurerm_key_vault.main.id
-
-  depends_on = [azurerm_key_vault_access_policy.current]
-}
+# NOTA: La infraestructura funcionará sin Key Vault
+# Las contraseñas están disponibles en los outputs de Terraform

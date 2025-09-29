@@ -14,6 +14,7 @@ public class User {
     @Column
     private String lastname;
     @Column
+    @Enumerated(EnumType.STRING)
     private UserRole role;
 
     public String getUsername() {

@@ -8,19 +8,19 @@ variable "resource_group_name" {
 variable "location" {
   description = "Región de Azure"
   type        = string
-  default     = "eastus"
+  default     = "chilecentral"
 }
 
 variable "resource_group_location" {
   description = "Región del Resource Group (no mover si ya existe)"
   type        = string
-  default     = "eastus"
+  default     = "chilecentral"
 }
 
 variable "db_location" {
   description = "Región para PostgreSQL Flexible Servers"
   type        = string
-  default     = "eastus"
+  default     = "chilecentral"
 }
 
 # Variables para la red virtual
@@ -49,11 +49,12 @@ variable "todos_subnet_prefix" {
   default     = "10.0.3.0/24"
 }
 
-variable "gateway_subnet_prefix" {
-  description = "Prefijo de dirección para la subnet del Gateway"
-  type        = string
-  default     = "10.0.4.0/24"
-}
+# Gateway subnet prefix removed - Application Gateway eliminated
+# variable "gateway_subnet_prefix" {
+#   description = "Prefijo de dirección para la subnet del Gateway"
+#   type        = string
+#   default     = "10.0.4.0/24"
+# }
 
 variable "cache_subnet_prefix" {
   description = "Prefijo de dirección para la subnet de Cache"
@@ -61,29 +62,30 @@ variable "cache_subnet_prefix" {
   default     = "10.0.5.0/24"
 }
 
-variable "auth_container_subnet_prefix" {
-  description = "Prefijo de dirección para la subnet de Auth Container"
-  type        = string
-  default     = "10.0.6.0/24"
-}
+# Container subnet prefixes removed - using public IPs for direct access
+# variable "auth_container_subnet_prefix" {
+#   description = "Prefijo de dirección para la subnet de Auth Container"
+#   type        = string
+#   default     = "10.0.6.0/24"
+# }
 
-variable "users_container_subnet_prefix" {
-  description = "Prefijo de dirección para la subnet de Users Container"
-  type        = string
-  default     = "10.0.7.0/24"
-}
+# variable "users_container_subnet_prefix" {
+#   description = "Prefijo de dirección para la subnet de Users Container"
+#   type        = string
+#   default     = "10.0.7.0/24"
+# }
 
-variable "todos_container_subnet_prefix" {
-  description = "Prefijo de dirección para la subnet de Todos Container"
-  type        = string
-  default     = "10.0.8.0/24"
-}
+# variable "todos_container_subnet_prefix" {
+#   description = "Prefijo de dirección para la subnet de Todos Container"
+#   type        = string
+#   default     = "10.0.8.0/24"
+# }
 
-variable "frontend_container_subnet_prefix" {
-  description = "Prefijo de dirección para la subnet de Frontend Container"
-  type        = string
-  default     = "10.0.9.0/24"
-}
+# variable "frontend_container_subnet_prefix" {
+#   description = "Prefijo de dirección para la subnet de Frontend Container"
+#   type        = string
+#   default     = "10.0.9.0/24"
+# }
 
 # Variables para contraseñas de bases de datos
 variable "postgres_auth_password" {

@@ -54,13 +54,7 @@ resource "azurerm_subnet" "todos" {
   }
 }
 
-# Subnet para Application Gateway
-resource "azurerm_subnet" "gateway" {
-  name                 = "gateway-subnet"
-  resource_group_name  = var.resource_group_name
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = [var.gateway_subnet_prefix]
-}
+# Application Gateway subnet removed - using direct public access
 
 # Subnet para Azure Cache for Redis
 resource "azurerm_subnet" "cache" {
@@ -70,63 +64,6 @@ resource "azurerm_subnet" "cache" {
   address_prefixes     = [var.cache_subnet_prefix]
 }
 
-# Separate subnets for Container Instances (no delegation conflicts)
-resource "azurerm_subnet" "auth_container" {
-  name                 = "auth-container-subnet"
-  resource_group_name  = var.resource_group_name
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = [var.auth_container_subnet_prefix]
+# Container subnets removed - using public IPs for direct access
 
-  delegation {
-    name = "container-delegation"
-    service_delegation {
-      name    = "Microsoft.ContainerInstance/containerGroups"
-      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-    }
-  }
-}
-
-resource "azurerm_subnet" "users_container" {
-  name                 = "users-container-subnet"
-  resource_group_name  = var.resource_group_name
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = [var.users_container_subnet_prefix]
-
-  delegation {
-    name = "container-delegation"
-    service_delegation {
-      name    = "Microsoft.ContainerInstance/containerGroups"
-      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-    }
-  }
-}
-
-resource "azurerm_subnet" "todos_container" {
-  name                 = "todos-container-subnet"
-  resource_group_name  = var.resource_group_name
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = [var.todos_container_subnet_prefix]
-
-  delegation {
-    name = "container-delegation"
-    service_delegation {
-      name    = "Microsoft.ContainerInstance/containerGroups"
-      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-    }
-  }
-}
-
-resource "azurerm_subnet" "frontend_container" {
-  name                 = "frontend-container-subnet"
-  resource_group_name  = var.resource_group_name
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = [var.frontend_container_subnet_prefix]
-
-  delegation {
-    name = "container-delegation"
-    service_delegation {
-      name    = "Microsoft.ContainerInstance/containerGroups"
-      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-    }
-  }
-}
+# Network Security Groups removed - using public IPs with Azure default security
