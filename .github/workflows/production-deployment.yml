@@ -15,6 +15,14 @@ on:
         options:
           - production
           - staging
+      resource_group:
+        description: "Resource group to deploy to"
+        required: true
+        default: "microservice-app-rg"
+        type: choice
+        options:
+          - microservice-app-rg
+          - microservice-app-pipeline-rg
 
 env:
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -27,8 +35,8 @@ env:
   ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  # Environment-specific resource group (to protect existing working deployment)
-  PIPELINE_RESOURCE_GROUP: microservice-app-pipeline-rg
+  # Dynamic resource group selection based on input or default for push events
+  PIPELINE_RESOURCE_GROUP: ${{ github.event.inputs.resource_group || 'microservice-app-pipeline-rg' }}
 
 jobs:
   # Job para validar código antes del despliegue
@@ -64,7 +72,14 @@ jobs:
       - name: Terraform Init
         run: |
           echo "🔑 Initializing Terraform with remote backend for validation..."
-          terraform init -upgrade
+          # Use specific backend configuration for pipeline resource group
+          if [ "${{ env.PIPELINE_RESOURCE_GROUP }}" = "microservice-app-pipeline-rg" ]; then
+            echo "📝 Using pipeline-specific backend configuration"
+            terraform init -upgrade -backend-config=backend-pipeline.conf
+          else
+            echo "📝 Using default backend configuration"
+            terraform init -upgrade
+          fi
         working-directory: ./terraform
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -204,7 +219,16 @@ jobs:
       - name: Terraform Init
         run: |
           echo "🔑 Initializing Terraform with remote backend..."
-          terraform init -upgrade
+          # Use specific backend configuration for pipeline resource group
+          if [ "${{ env.PIPELINE_RESOURCE_GROUP }}" = "microservice-app-pipeline-rg" ]; then
+            echo "📝 Using pipeline-specific backend configuration for deployment"
+            echo "📂 Backend state file: pipeline.terraform.tfstate"
+            terraform init -upgrade -backend-config=backend-pipeline.conf
+          else
+            echo "📝 Using default backend configuration for deployment"
+            echo "📂 Backend state file: prod.terraform.tfstate"
+            terraform init -upgrade
+          fi
         working-directory: ./terraform
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -328,6 +352,7 @@ jobs:
             -var="location=chilecentral" \
             -var="resource_group_location=chilecentral" \
             -var="db_location=chilecentral" \
+            -var="resource_group_name=${{ env.PIPELINE_RESOURCE_GROUP }}" \
             -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
             -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
             -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-service:${TAG}" \
@@ -356,6 +381,7 @@ jobs:
             -var="location=chilecentral" \
             -var="resource_group_location=chilecentral" \
             -var="db_location=chilecentral" \
+            -var="resource_group_name=${{ env.PIPELINE_RESOURCE_GROUP }}" \
             -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
             -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
             -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-service:${TAG}" \
@@ -381,6 +407,7 @@ jobs:
             -var="location=chilecentral" \
             -var="resource_group_location=chilecentral" \
             -var="db_location=chilecentral" \
+            -var="resource_group_name=${{ env.PIPELINE_RESOURCE_GROUP }}" \
             -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
             -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
             -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-service:${TAG}" \
@@ -405,6 +432,7 @@ jobs:
             -var="location=chilecentral" \
             -var="resource_group_location=chilecentral" \
             -var="db_location=chilecentral" \
+            -var="resource_group_name=${{ env.PIPELINE_RESOURCE_GROUP }}" \
             -var="dockerhub_username=${{ secrets.DOCKERHUB_USERNAME }}" \
             -var="dockerhub_token=${{ secrets.DOCKERHUB_TOKEN }}" \
             -var="users_api_image=${{ secrets.DOCKERHUB_USERNAME }}/users-service:${TAG}" \
