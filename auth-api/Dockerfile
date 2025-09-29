@@ -11,7 +11,7 @@ COPY . .
 
 # Configurar módulos Go (basado en tu README.md)
 ENV GO111MODULE=on
-RUN go mod init github.com/bortizf/microservice-app-example/auth-api
+RUN if [ ! -f go.mod ]; then go mod init github.com/bortizf/microservice-app-example/auth-api; fi
 RUN go mod tidy
 
 # Construir el binario
