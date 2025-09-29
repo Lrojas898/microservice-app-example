@@ -235,6 +235,12 @@ jobs:
 
       - name: Import Existing Resources (Smart Sync)
         run: |
+          if [ "${{ env.deployment_mode }}" = "fresh" ]; then
+            echo "🚀 Fresh deployment detected - skipping import phase"
+            echo "ℹ️ All resources will be created from scratch"
+            exit 0
+          fi
+
           echo "🔍 Checking for existing Azure resources to import..."
 
           # Get unique suffix from terraform or generate new one
