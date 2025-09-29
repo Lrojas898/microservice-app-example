@@ -65,26 +65,30 @@ output "postgres_todos_password" {
   sensitive = true
 }
 
-# Service Public URLs for direct access
+# Service Public URLs for App Services
 
-output "auth_service_ip" {
-  value = azurerm_container_group.auth.ip_address
+output "auth_service_url" {
+  value = "https://${azurerm_linux_web_app.auth.default_hostname}"
 }
 
-output "users_service_ip" {
-  value = azurerm_container_group.users.ip_address
+output "users_service_url" {
+  value = "https://${azurerm_linux_web_app.users.default_hostname}"
 }
 
-output "todos_service_ip" {
-  value = azurerm_container_group.todos.ip_address
+output "todos_service_url" {
+  value = "https://${azurerm_linux_web_app.todos.default_hostname}"
 }
 
-output "frontend_service_ip" {
-  value = azurerm_container_group.frontend.ip_address
+output "frontend_service_url" {
+  value = "https://${azurerm_linux_web_app.frontend.default_hostname}"
 }
 
 output "frontend_url" {
-  value = "http://${azurerm_container_group.frontend.ip_address}"
+  value = "https://${azurerm_linux_web_app.frontend.default_hostname}"
+}
+
+output "log_processor_service_url" {
+  value = "https://${azurerm_linux_web_app.log_processor.default_hostname}"
 }
 
 # Unique suffix for resource naming
