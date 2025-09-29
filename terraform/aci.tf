@@ -2,8 +2,7 @@
 
 # Container Groups únicamente - SIN Redis ni Application Gateway
 
-# Zipkin ahora se despliega como VM (ver zipkin-vm.tf)
-# Configuración más estable y con control total del entorno
+# Container Groups configuración simplificada
 resource "azurerm_container_group" "auth" {
   name                = "auth-service"
   location            = var.location
@@ -52,7 +51,6 @@ resource "azurerm_container_group" "auth" {
       AUTH_API_PORT                       = "8000"
       USERS_API_ADDRESS                   = "http://placeholder-users:8083"
       JWT_SECRET                          = "myfancysecret1234567890abcdef1234"
-      ZIPKIN_URL                          = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
       REDIS_PASSWORD                      = "${module.security.redis_cache_primary_key}"
       REDIS_PORT                          = "6379"
@@ -136,7 +134,6 @@ resource "azurerm_container_group" "users" {
     environment_variables = {
       USERS_API_PORT = "8083"
       JWT_SECRET     = "myfancysecret1234567890abcdef1234"
-      ZIPKIN_URL     = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
     }
   }
 
@@ -199,7 +196,6 @@ resource "azurerm_container_group" "todos" {
     environment_variables = {
       TODOS_API_PORT                      = "8082"
       JWT_SECRET                          = "myfancysecret1234567890abcdef1234"
-      ZIPKIN_URL                          = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
       REDIS_HOST                          = "${module.security.redis_cache_hostname}"
       REDIS_PASSWORD                      = "${module.security.redis_cache_primary_key}"
       REDIS_PORT                          = "6379"
@@ -257,7 +253,6 @@ resource "azurerm_container_group" "log_processor" {
       REDIS_PASSWORD = "${module.security.redis_cache_primary_key}"
       REDIS_PORT     = "6379"
       REDIS_CHANNEL  = "log_channel"
-      ZIPKIN_URL     = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
       LOG_LEVEL      = "INFO"
     }
   }
@@ -299,7 +294,6 @@ resource "azurerm_container_group" "frontend" {
     environment_variables = {
       AUTH_API_ADDRESS  = "http://${azurerm_container_group.auth.ip_address}:8000"
       TODOS_API_ADDRESS = "http://${azurerm_container_group.todos.ip_address}:8082"
-      ZIPKIN_URL        = "http://${azurerm_public_ip.zipkin.ip_address}:9411/api/v2/spans"
     }
   }
 
