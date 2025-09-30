@@ -18,10 +18,9 @@ on:
       resource_group:
         description: "Resource group to deploy to"
         required: true
-        default: "microservice-app-rg"
+        default: "pipeline-microservice-app-rg"
         type: choice
         options:
-          - microservice-app-rg
           - microservice-app-pipeline-rg
           - pipeline-microservice-app-rg
 
