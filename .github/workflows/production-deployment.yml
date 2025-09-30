@@ -270,9 +270,8 @@ jobs:
       - name: Import Existing Resources (Smart Sync for App Services)
         run: |
           if [ "${{ env.deployment_mode }}" = "fresh" ]; then
-            echo "🚀 Fresh deployment detected - skipping import phase"
-            echo "ℹ️ All resources will be created from scratch"
-            exit 0
+            echo "🚀 Fresh deployment detected - but checking for manually created resource group..."
+            echo "ℹ️ Will attempt to import resource group if it exists, then create other resources from scratch"
           fi
 
           echo "🔍 Checking for existing Azure resources to import..."
@@ -306,8 +305,18 @@ jobs:
 
           echo "🚀 Starting smart resource import for App Services architecture..."
 
-          # Core infrastructure (using pipeline-specific resource group)
+          # Always try to import resource group first (critical for new deployments)
+          echo "🔍 Attempting to import resource group: ${{ env.PIPELINE_RESOURCE_GROUP }}"
           safe_import "azurerm_resource_group.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.PIPELINE_RESOURCE_GROUP }}"
+
+          # For fresh deployments, only import resource group, skip other resources
+          if [ "${{ env.deployment_mode }}" = "fresh" ]; then
+            echo "✅ Resource group import attempted. Skipping other resource imports for fresh deployment."
+            echo "📊 Final state after resource group import:"
+            terraform state list | sort
+            echo "✅ Ready for fresh infrastructure deployment!"
+            exit 0
+          fi
           safe_import "module.network.azurerm_virtual_network.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.PIPELINE_RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/microservice-vnet"
 
           # Network subnets
