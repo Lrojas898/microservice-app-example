@@ -6,7 +6,7 @@
 terraform.tfvars
 *.auto.tfvars
 */.terraform.lock.hcl
-
+.claude
 terraform.tfstate
 terraform.tfstate.*
 
