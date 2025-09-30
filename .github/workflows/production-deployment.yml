@@ -305,18 +305,12 @@ jobs:
 
           echo "🚀 Starting smart resource import for App Services architecture..."
 
-          # Always try to import resource group first (critical for new deployments)
-          echo "🔍 Attempting to import resource group: ${{ env.PIPELINE_RESOURCE_GROUP }}"
-          safe_import "azurerm_resource_group.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.PIPELINE_RESOURCE_GROUP }}"
+          # Always try to import all possible resources (ignore errors for non-existing ones)
+          echo "🔍 Attempting to import all possible resources for: ${{ env.PIPELINE_RESOURCE_GROUP }}"
+          echo "ℹ️ This will update the state with any existing resources and ignore non-existing ones"
 
-          # For fresh deployments, only import resource group, skip other resources
-          if [ "${{ env.deployment_mode }}" = "fresh" ]; then
-            echo "✅ Resource group import attempted. Skipping other resource imports for fresh deployment."
-            echo "📊 Final state after resource group import:"
-            terraform state list | sort
-            echo "✅ Ready for fresh infrastructure deployment!"
-            exit 0
-          fi
+          # Core infrastructure (always attempt these first)
+          safe_import "azurerm_resource_group.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.PIPELINE_RESOURCE_GROUP }}"
           safe_import "module.network.azurerm_virtual_network.main" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.PIPELINE_RESOURCE_GROUP }}/providers/Microsoft.Network/virtualNetworks/microservice-vnet"
 
           # Network subnets
@@ -344,9 +338,12 @@ jobs:
           safe_import "azurerm_linux_web_app.log_processor" "/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.PIPELINE_RESOURCE_GROUP }}/providers/Microsoft.Web/sites/log-processor-service-${UNIQUE_SUFFIX}"
 
           echo "ℹ️ Skipping legacy Container Groups (replaced by App Services)"
-          echo "📊 Final state after import:"
-          terraform state list | sort
+          echo ""
+          echo "📊 Final state after import attempt:"
+          terraform state list | sort || echo "ℹ️ No resources in state yet"
+          echo ""
           echo "✅ Smart import completed for App Services architecture!"
+          echo "ℹ️ Any existing resources have been imported to state, missing resources will be created"
         working-directory: ./terraform
         env:
           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
